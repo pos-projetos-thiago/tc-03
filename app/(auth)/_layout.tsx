@@ -1,10 +1,13 @@
 import { Redirect, Stack } from 'expo-router';
 
-// TODO Sprint 1: substituir pelo useAuth() real quando AuthProvider estiver implementado
-// Por ora não há usuário autenticado, então este grupo é sempre acessível
-const user = null;
+import { useAuth } from '@/src/features/auth';
+import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 
 export default function AuthLayout() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <LoadingSpinner fullScreen />;
+
   // Se o usuário já estiver logado, redireciona direto para o app
   if (user) {
     return <Redirect href="/(tabs)/dashboard" />;

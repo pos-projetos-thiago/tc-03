@@ -1,17 +1,17 @@
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { Redirect, Tabs } from 'expo-router';
 
-// TODO Sprint 1: substituir pelo useAuth() real
-const user = null;
-const isLoading = false;
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/src/features/auth';
+import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
+import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme() ?? 'light';
+  const { user, isLoading } = useAuth();
 
   // Enquanto verifica sessão, não renderiza as tabs
-  if (isLoading) return null;
+  if (isLoading) return <LoadingSpinner fullScreen />;
 
   // Usuário não autenticado: redireciona para login
   if (!user) {
