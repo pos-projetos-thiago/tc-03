@@ -1,8 +1,10 @@
 // API pública da feature transactions
-export type { CreateTransactionInput, Transaction, UpdateTransactionInput } from './types/transaction';
+export type { CreateTransactionInput, Transaction, TransactionType, UpdateTransactionInput } from './types/transaction';
 export { DEFAULT_FILTER } from './types/transaction-filter';
 export type { TransactionFilter } from './types/transaction-filter';
 export type { ITransactionService } from './types/transaction-service.interface';
+export { INVESTMENT_CATEGORIES } from './types/transaction-investment-categories';
+export type { InvestmentCategory } from './types/transaction-investment-categories';
 
 // Serviço (exposto para hooks e testes)
 export { transactionService } from './services/firestore-transaction.service';

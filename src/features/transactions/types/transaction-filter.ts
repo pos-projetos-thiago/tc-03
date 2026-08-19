@@ -1,5 +1,7 @@
+import type { TransactionType } from './transaction';
+
 export interface TransactionFilter {
-  type: 'income' | 'expense' | null;
+  type: TransactionType | null;
   category: string | null;
   dateRange: { start: Date; end: Date } | null;
 }

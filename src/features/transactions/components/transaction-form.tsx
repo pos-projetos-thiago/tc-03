@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,14 +19,14 @@ import { validateAmount } from '@/src/shared/utils/validators';
 
 import { useCreateTransaction } from '../hooks/use-create-transaction';
 import { useEditTransaction } from '../hooks/use-edit-transaction';
-import type { Transaction } from '../types/transaction';
+import type { Transaction, TransactionType } from '../types/transaction';
+import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 
 // ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
 
 function validateDescription(value: string): string | null {
-  if (!value.trim()) return 'Descrição é obrigatória';
   if (value.trim().length > 120) return 'Descrição deve ter no máximo 120 caracteres';
   return null;
 }
@@ -123,11 +124,14 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   // Field state — inicializado com initialData quando em modo edição
   // -------------------------------------------------------------------------
 
-  const [type, setType] = useState<'income' | 'expense'>(initialData?.type ?? 'expense');
+  const [type, setType] = useState<TransactionType>(initialData?.type ?? 'expense');
   const [amount, setAmount] = useState<string>(
     initialData ? String(initialData.amount) : '',
   );
-  const [category, setCategory] = useState(initialData?.category ?? '');
+  // Investimento: categoria começa na primeira opção da lista se não vier de initialData
+  const [category, setCategory] = useState<string>(
+    initialData?.category ?? '',
+  );
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [date, setDate] = useState<string>(
     initialData ? isoToDateInput(initialData.date) : todayAsInput(),
@@ -256,24 +260,48 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           <View style={s.segmentRow}>
             <TouchableOpacity
               style={[s.segment, type === 'income' && s.segmentActiveIncome]}
-              onPress={() => { setType('income'); if (error) clearError(); }}
+              onPress={() => {
+                setType('income');
+                setCategory('');
+                if (error) clearError();
+              }}
               disabled={isSubmitting}
               accessibilityRole="button"
-              accessibilityLabel="Receita"
+              accessibilityLabel="Depósito"
               accessibilityState={{ selected: type === 'income' }}>
               <Text style={[s.segmentText, type === 'income' && s.segmentTextActive]}>
-                Receita
+                Depósito
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.segment, type === 'expense' && s.segmentActiveExpense]}
-              onPress={() => { setType('expense'); if (error) clearError(); }}
+              onPress={() => {
+                setType('expense');
+                setCategory('');
+                if (error) clearError();
+              }}
               disabled={isSubmitting}
               accessibilityRole="button"
-              accessibilityLabel="Despesa"
+              accessibilityLabel="Saque"
               accessibilityState={{ selected: type === 'expense' }}>
               <Text style={[s.segmentText, type === 'expense' && s.segmentTextActive]}>
-                Despesa
+                Saque
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.segment, type === 'investment' && s.segmentActiveInvestment]}
+              onPress={() => {
+                setType('investment');
+                // Pré-seleciona a primeira categoria de investimento
+                setCategory(INVESTMENT_CATEGORIES[0]);
+                if (error) clearError();
+              }}
+              disabled={isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel="Investimento"
+              accessibilityState={{ selected: type === 'investment' }}>
+              <Text style={[s.segmentText, type === 'investment' && s.segmentTextActive]}>
+                Investimento
               </Text>
             </TouchableOpacity>
           </View>
@@ -298,28 +326,62 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Categoria */}
+        {/* Categoria — picker fixo para investimento, texto livre para demais */}
         <View style={s.fieldWrapper}>
-          <Text style={s.label}>Categoria</Text>
-          <TextInput
-            style={[s.input, fieldErrors.category ? s.inputError : null]}
-            value={category}
-            onChangeText={handleCategoryChange}
-            placeholder="Ex: Alimentação, Salário…"
-            placeholderTextColor={colors.icon}
-            autoCapitalize="sentences"
-            returnKeyType="next"
-            accessibilityLabel="Campo de categoria"
-            editable={!isSubmitting}
-          />
+          <Text style={s.label}>
+            {type === 'investment' ? 'Tipo de investimento' : 'Categoria'}
+          </Text>
+          {type === 'investment' ? (
+            <View style={[s.pickerWrapper, fieldErrors.category ? s.inputError : null]}>
+              {INVESTMENT_CATEGORIES.map((cat) => (
+                <Pressable
+                  key={cat}
+                  style={[
+                    s.pickerOption,
+                    category === cat && s.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setCategory(cat);
+                    if (submitted) {
+                      setFieldErrors((prev) => ({ ...prev, category: null }));
+                    }
+                    if (error) clearError();
+                  }}
+                  disabled={isSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel={cat}
+                  accessibilityState={{ selected: category === cat }}>
+                  <Text
+                    style={[
+                      s.pickerOptionText,
+                      category === cat && s.pickerOptionTextSelected,
+                    ]}>
+                    {cat}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <TextInput
+              style={[s.input, fieldErrors.category ? s.inputError : null]}
+              value={category}
+              onChangeText={handleCategoryChange}
+              placeholder={type === 'income' ? 'Ex: Salário, Freelance…' : 'Ex: Alimentação, Transporte…'}
+              placeholderTextColor={colors.icon}
+              autoCapitalize="sentences"
+              returnKeyType="next"
+              accessibilityLabel="Campo de categoria"
+              editable={!isSubmitting}
+            />
+          )}
           {fieldErrors.category ? (
             <Text style={s.fieldError} accessibilityRole="alert">{fieldErrors.category}</Text>
           ) : null}
         </View>
 
-        {/* Descrição */}
+        {/* Descrição — opcional */}
         <View style={s.fieldWrapper}>
-          <Text style={s.label}>Descrição</Text>
+          <Text style={s.label}>Descrição <Text style={s.labelOptional}>(opcional)</Text></Text>
           <TextInput
             style={[s.input, fieldErrors.description ? s.inputError : null]}
             value={description}
@@ -417,6 +479,11 @@ function makeStyles(colors: (typeof Colors)['light']) {
       fontWeight: '600',
       color: colors.text,
     },
+    labelOptional: {
+      fontSize: 12,
+      fontWeight: '400',
+      color: colors.icon,
+    },
     input: {
       height: 48,
       borderWidth: 1,
@@ -456,6 +523,10 @@ function makeStyles(colors: (typeof Colors)['light']) {
       backgroundColor: '#fee2e2',
       borderColor: '#dc2626',
     },
+    segmentActiveInvestment: {
+      backgroundColor: '#eff6ff',
+      borderColor: '#2563eb',
+    },
     segmentText: {
       fontSize: 14,
       fontWeight: '600',
@@ -478,6 +549,30 @@ function makeStyles(colors: (typeof Colors)['light']) {
     buttonText: {
       color: '#ffffff',
       fontSize: 16,
+      fontWeight: '700',
+    },
+    pickerWrapper: {
+      borderWidth: 1,
+      borderColor: '#d1d5db',
+      borderRadius: 8,
+      overflow: 'hidden',
+    },
+    pickerOption: {
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: '#e5e7eb',
+      backgroundColor: colors.background,
+    },
+    pickerOptionSelected: {
+      backgroundColor: '#eff6ff',
+    },
+    pickerOptionText: {
+      fontSize: 15,
+      color: colors.icon,
+    },
+    pickerOptionTextSelected: {
+      color: '#2563eb',
       fontWeight: '700',
     },
   });

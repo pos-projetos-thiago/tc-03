@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore';
+import type { TransactionType } from './transaction';
 
 /**
  * DTO — representa o documento como armazenado no Firestore.
@@ -7,7 +8,7 @@ import type { Timestamp } from 'firebase/firestore';
  */
 export interface TransactionDTO {
   userId: string;
-  type: 'income' | 'expense';
+  type: TransactionType;
   amount: number;
   category: string;
   description: string;

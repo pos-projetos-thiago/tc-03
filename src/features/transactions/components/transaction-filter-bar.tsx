@@ -11,6 +11,7 @@ import {
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
+import type { TransactionType } from '../types/transaction';
 import type { TransactionFilter } from '../types/transaction-filter';
 
 // ---------------------------------------------------------------------------
@@ -63,7 +64,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
   const colors = Colors[colorScheme];
 
   // Estado local do formulário de filtro — pendente até o usuário clicar em Aplicar
-  const [localType, setLocalType] = useState<'income' | 'expense' | null>(filter.type);
+  const [localType, setLocalType] = useState<TransactionType | null>(filter.type);
   const [localCategory, setLocalCategory] = useState<string>(filter.category ?? '');
   const [localDateStart, setLocalDateStart] = useState<string>(
     filter.dateRange ? dateToInput(filter.dateRange.start) : '',
@@ -152,6 +153,16 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
             accessibilityState={{ selected: localType === 'expense' }}>
             <Text style={[s.segmentText, localType === 'expense' && s.segmentTextSelected]}>
               Despesa
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[s.segment, localType === 'investment' && s.segmentInvestment]}
+            onPress={() => setLocalType(localType === 'investment' ? null : 'investment')}
+            accessibilityRole="button"
+            accessibilityLabel="Investimento"
+            accessibilityState={{ selected: localType === 'investment' }}>
+            <Text style={[s.segmentText, localType === 'investment' && s.segmentTextSelected]}>
+              Investimento
             </Text>
           </Pressable>
         </View>
@@ -278,6 +289,10 @@ function makeStyles(colors: (typeof Colors)['light']) {
     segmentExpense: {
       borderColor: '#dc2626',
       backgroundColor: '#fee2e2',
+    },
+    segmentInvestment: {
+      borderColor: '#2563eb',
+      backgroundColor: '#eff6ff',
     },
     segmentText: {
       fontSize: 13,

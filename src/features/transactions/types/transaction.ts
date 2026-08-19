@@ -1,8 +1,11 @@
+/** Tipo da operação financeira. */
+export type TransactionType = 'income' | 'expense' | 'investment';
+
 /** Domain model — entidade financeira da aplicação */
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'income' | 'expense';
+  type: TransactionType;
   amount: number;           // sempre positivo (> 0)
   category: string;
   description: string;

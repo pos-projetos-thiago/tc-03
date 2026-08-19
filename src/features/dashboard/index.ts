@@ -1,3 +1,17 @@
-// API pública da feature dashboard
-// Hook e componentes serão adicionados na Sprint 4
-export type { DashboardSummary } from './types/dashboard-summary';
+// Tipos de domínio
+export type { CategoryBreakdown, DashboardSummary } from './types/dashboard-summary';
+
+// Utilitários de cálculo (expostos para testes)
+export {
+  buildCategoryBreakdown,
+  calculateBalance,
+  endOfMonth,
+  startOfMonth,
+  sumByType,
+} from './utils/dashboard-calculators';
+
+// Serviço
+export { dashboardService } from './services/dashboard.service';
+
+// Hook
+export { useDashboard } from './hooks/use-dashboard';
