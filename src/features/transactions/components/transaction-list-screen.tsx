@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Platform,
@@ -27,8 +28,11 @@ import { TransactionItem } from './transaction-item';
 
 /**
  * Tela principal de transações.
- * Recarrega via useFocusEffect ao voltar de criação ou edição.
- * Suporta filtro por tipo, categoria e período.
+ *
+ * - Recarrega via useFocusEffect ao voltar de criação ou edição,
+ *   mas apenas se a tela já tiver sido montada (evita requisição dupla inicial).
+ * - Suporta scroll infinito via onEndReached + loadMore.
+ * - Suporta filtro por tipo, categoria e período.
  */
 export function TransactionListScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -38,15 +42,30 @@ export function TransactionListScreen() {
   const [filter, setFilter] = useState<TransactionFilter>(DEFAULT_FILTER);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { transactions, isLoading, error, refresh } = useTransactions(user?.id ?? null, filter);
+  const {
+    transactions,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    refresh,
+    loadMore,
+  } = useTransactions(user?.id ?? null, filter);
+
   const { remove, isDeleting, error: deleteError } = useDeleteTransaction();
 
   const isFilterActive =
     filter.type !== null || filter.category !== null || filter.dateRange !== null;
 
-  // Recarrega sempre que a tela ganhar foco (retorno de criar/editar)
+  // Controla se a tela já foi montada para evitar refresh duplo na abertura
+  const hasMountedRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
+      if (!hasMountedRef.current) {
+        hasMountedRef.current = true;
+        return;
+      }
       refresh();
     }, [refresh]),
   );
@@ -67,7 +86,6 @@ export function TransactionListScreen() {
 
   function handleDeleteRequest(transaction: Transaction) {
     if (Platform.OS === 'web') {
-      // Alert.alert é no-op no React Native Web — usa o diálogo nativo do browser
       const confirmed = window.confirm(
         `Deseja excluir "${transaction.description}"? Esta ação não pode ser desfeita.`,
       );
@@ -107,13 +125,36 @@ export function TransactionListScreen() {
     setShowFilters(false);
   }
 
+  function handleEndReached() {
+    if (hasMore && !isLoadingMore && !isLoading) {
+      loadMore();
+    }
+  }
+
   // -------------------------------------------------------------------------
-  // Render
+  // Render helpers
+  // -------------------------------------------------------------------------
+
+  function renderFooter() {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.tint} />
+      </View>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Loading inicial (primeira carga sem filtro ativo)
   // -------------------------------------------------------------------------
 
   if (isLoading && transactions.length === 0 && !isFilterActive) {
     return <LoadingSpinner fullScreen />;
   }
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
 
   return (
     <View style={styles.container}>
@@ -178,15 +219,28 @@ export function TransactionListScreen() {
             tintColor={colors.tint}
           />
         }
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={renderFooter}
         ListEmptyComponent={
           !error ? (
             <EmptyState
-              message={isFilterActive ? 'Nenhum resultado para os filtros aplicados' : 'Nenhuma transação encontrada'}
-              description={isFilterActive ? 'Tente ajustar ou limpar os filtros.' : "Toque em '+ Nova' para adicionar sua primeira transação."}
+              message={
+                isFilterActive
+                  ? 'Nenhum resultado para os filtros aplicados'
+                  : 'Nenhuma transação encontrada'
+              }
+              description={
+                isFilterActive
+                  ? 'Tente ajustar ou limpar os filtros.'
+                  : "Toque em '+ Nova' para adicionar sua primeira transação."
+              }
             />
           ) : null
         }
-        contentContainerStyle={transactions.length === 0 ? styles.emptyContent : undefined}
+        contentContainerStyle={
+          transactions.length === 0 ? styles.emptyContent : undefined
+        }
       />
     </View>
   );
@@ -239,5 +293,9 @@ const styles = StyleSheet.create({
   },
   emptyContent: {
     flex: 1,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });

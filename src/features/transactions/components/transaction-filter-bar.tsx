@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +13,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
 import type { TransactionType } from '../types/transaction';
+import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 import type { TransactionFilter } from '../types/transaction-filter';
 
 // ---------------------------------------------------------------------------
@@ -54,16 +56,18 @@ interface TransactionFilterBarProps {
 
 /**
  * Barra de filtros para a lista de transações.
- * Conecta apenas os filtros suportados pelo transactionService:
- *   - type ('income' | 'expense')
- *   - category (comparação exata)
- *   - dateRange (start e end)
+ *
+ * Filtros suportados:
+ *   - type: segmented control (Todos / Receita / Despesa / Investimento)
+ *   - category:
+ *       - quando type === 'investment': chips de seleção usando INVESTMENT_CATEGORIES
+ *       - nos demais casos: TextInput livre (comparação exata no Firestore)
+ *   - dateRange: dois campos DD/MM/AAAA com validação
  */
 export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFilterBarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  // Estado local do formulário de filtro — pendente até o usuário clicar em Aplicar
   const [localType, setLocalType] = useState<TransactionType | null>(filter.type);
   const [localCategory, setLocalCategory] = useState<string>(filter.category ?? '');
   const [localDateStart, setLocalDateStart] = useState<string>(
@@ -72,13 +76,20 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
   const [localDateEnd, setLocalDateEnd] = useState<string>(
     filter.dateRange ? dateToInput(filter.dateRange.end) : '',
   );
-
   const [dateError, setDateError] = useState<string | null>(null);
+
+  // Quando o tipo muda para/de 'investment', limpa a categoria
+  // para evitar enviar uma categoria inválida para o outro modo.
+  function handleTypeChange(type: TransactionType | null) {
+    if (type !== localType) {
+      setLocalCategory('');
+    }
+    setLocalType(type);
+  }
 
   function handleApply() {
     setDateError(null);
 
-    // Valida dateRange apenas se um dos campos for preenchido
     let dateRange: TransactionFilter['dateRange'] = null;
     const hasStart = localDateStart.trim().length > 0;
     const hasEnd = localDateEnd.trim().length > 0;
@@ -95,7 +106,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
         setDateError('A data inicial não pode ser posterior à data final.');
         return;
       }
-      // Ajusta end para o fim do dia para incluir transações do dia inteiro
       end.setHours(23, 59, 59, 999);
       dateRange = { start, end };
     }
@@ -121,13 +131,15 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
 
   return (
     <View style={s.container}>
-      {/* Tipo */}
-      <View style={s.row}>
+      {/* ------------------------------------------------------------------ */}
+      {/* Tipo                                                                */}
+      {/* ------------------------------------------------------------------ */}
+      <View style={s.fieldWrapper}>
         <Text style={s.label}>Tipo</Text>
         <View style={s.segmentRow}>
           <Pressable
             style={[s.segment, localType === null && s.segmentSelected]}
-            onPress={() => setLocalType(null)}
+            onPress={() => handleTypeChange(null)}
             accessibilityRole="button"
             accessibilityLabel="Todos"
             accessibilityState={{ selected: localType === null }}>
@@ -137,7 +149,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
           </Pressable>
           <Pressable
             style={[s.segment, localType === 'income' && s.segmentIncome]}
-            onPress={() => setLocalType(localType === 'income' ? null : 'income')}
+            onPress={() => handleTypeChange(localType === 'income' ? null : 'income')}
             accessibilityRole="button"
             accessibilityLabel="Receita"
             accessibilityState={{ selected: localType === 'income' }}>
@@ -147,7 +159,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
           </Pressable>
           <Pressable
             style={[s.segment, localType === 'expense' && s.segmentExpense]}
-            onPress={() => setLocalType(localType === 'expense' ? null : 'expense')}
+            onPress={() => handleTypeChange(localType === 'expense' ? null : 'expense')}
             accessibilityRole="button"
             accessibilityLabel="Despesa"
             accessibilityState={{ selected: localType === 'expense' }}>
@@ -157,40 +169,81 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
           </Pressable>
           <Pressable
             style={[s.segment, localType === 'investment' && s.segmentInvestment]}
-            onPress={() => setLocalType(localType === 'investment' ? null : 'investment')}
+            onPress={() =>
+              handleTypeChange(localType === 'investment' ? null : 'investment')
+            }
             accessibilityRole="button"
             accessibilityLabel="Investimento"
             accessibilityState={{ selected: localType === 'investment' }}>
-            <Text style={[s.segmentText, localType === 'investment' && s.segmentTextSelected]}>
+            <Text
+              style={[
+                s.segmentText,
+                localType === 'investment' && s.segmentTextSelected,
+              ]}>
               Investimento
             </Text>
           </Pressable>
         </View>
       </View>
 
-      {/* Categoria */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Categoria                                                           */}
+      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Categoria</Text>
-        <TextInput
-          style={s.input}
-          value={localCategory}
-          onChangeText={setLocalCategory}
-          placeholder="Filtrar por categoria exata"
-          placeholderTextColor={colors.icon}
-          autoCapitalize="sentences"
-          returnKeyType="done"
-          accessibilityLabel="Filtro por categoria"
-        />
+
+        {localType === 'investment' ? (
+          /* Chips de seleção para investimentos */
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.chipsRow}
+            accessibilityRole="none">
+            {INVESTMENT_CATEGORIES.map((cat) => {
+              const selected = localCategory === cat;
+              return (
+                <Pressable
+                  key={cat}
+                  style={[s.chip, selected && s.chipSelected]}
+                  onPress={() => setLocalCategory(selected ? '' : cat)}
+                  accessibilityRole="button"
+                  accessibilityLabel={cat}
+                  accessibilityState={{ selected }}>
+                  <Text style={[s.chipText, selected && s.chipTextSelected]}>
+                    {cat}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : (
+          /* TextInput livre para income/expense/todos */
+          <TextInput
+            style={s.input}
+            value={localCategory}
+            onChangeText={setLocalCategory}
+            placeholder="Filtrar por categoria exata"
+            placeholderTextColor={colors.icon}
+            autoCapitalize="sentences"
+            returnKeyType="done"
+            accessibilityLabel="Filtro por categoria"
+          />
+        )}
       </View>
 
-      {/* Período */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Período                                                             */}
+      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Período</Text>
         <View style={s.dateRow}>
           <TextInput
             style={[s.inputHalf, dateError ? s.inputError : null]}
             value={localDateStart}
-            onChangeText={(v) => { setLocalDateStart(v); setDateError(null); }}
+            onChangeText={(v) => {
+              setLocalDateStart(v);
+              setDateError(null);
+            }}
             placeholder="De DD/MM/AAAA"
             placeholderTextColor={colors.icon}
             keyboardType="numeric"
@@ -200,7 +253,10 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
           <TextInput
             style={[s.inputHalf, dateError ? s.inputError : null]}
             value={localDateEnd}
-            onChangeText={(v) => { setLocalDateEnd(v); setDateError(null); }}
+            onChangeText={(v) => {
+              setLocalDateEnd(v);
+              setDateError(null);
+            }}
             placeholder="Até DD/MM/AAAA"
             placeholderTextColor={colors.icon}
             keyboardType="numeric"
@@ -209,11 +265,15 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
           />
         </View>
         {dateError ? (
-          <Text style={s.fieldError} accessibilityRole="alert">{dateError}</Text>
+          <Text style={s.fieldError} accessibilityRole="alert">
+            {dateError}
+          </Text>
         ) : null}
       </View>
 
-      {/* Ações */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Ações                                                               */}
+      {/* ------------------------------------------------------------------ */}
       <View style={s.actions}>
         <TouchableOpacity
           style={[s.btnApply, { backgroundColor: colors.tint }]}
@@ -250,9 +310,6 @@ function makeStyles(colors: (typeof Colors)['light']) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: '#e5e7eb',
       gap: 10,
-    },
-    row: {
-      gap: 4,
     },
     fieldWrapper: {
       gap: 4,
@@ -303,6 +360,34 @@ function makeStyles(colors: (typeof Colors)['light']) {
       color: colors.text,
       fontWeight: '700',
     },
+    // Chips de categoria (investimento)
+    chipsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingVertical: 2,
+    },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: '#d1d5db',
+      backgroundColor: colors.background,
+    },
+    chipSelected: {
+      borderColor: '#2563eb',
+      backgroundColor: '#eff6ff',
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.icon,
+    },
+    chipTextSelected: {
+      color: '#1d4ed8',
+      fontWeight: '700',
+    },
+    // TextInput categoria livre
     input: {
       height: 40,
       borderWidth: 1,
@@ -313,6 +398,7 @@ function makeStyles(colors: (typeof Colors)['light']) {
       color: colors.text,
       backgroundColor: colors.background,
     },
+    // Campos de data
     dateRow: {
       flexDirection: 'row',
       gap: 8,
@@ -335,6 +421,7 @@ function makeStyles(colors: (typeof Colors)['light']) {
       fontSize: 12,
       color: '#ef4444',
     },
+    // Botões
     actions: {
       flexDirection: 'row',
       gap: 8,
