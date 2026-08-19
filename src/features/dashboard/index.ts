@@ -15,3 +15,6 @@ export { dashboardService } from './services/dashboard.service';
 
 // Hook
 export { useDashboard } from './hooks/use-dashboard';
+
+// Componentes
+export { DashboardScreen } from './components/dashboard-screen';
