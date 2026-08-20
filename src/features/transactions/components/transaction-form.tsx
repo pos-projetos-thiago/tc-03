@@ -1,6 +1,9 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +22,7 @@ import { validateAmount } from '@/src/shared/utils/validators';
 
 import { useCreateTransaction } from '../hooks/use-create-transaction';
 import { useEditTransaction } from '../hooks/use-edit-transaction';
+import { useReceiptUpload } from '../hooks/use-receipt-upload';
 import type { Transaction, TransactionType } from '../types/transaction';
 import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 
@@ -115,6 +119,8 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     useCreateTransaction();
   const { edit, isSubmitting: isEditing_, error: editError, clearError: clearEditError } =
     useEditTransaction();
+  const { upload, progress: uploadProgress, isUploading, error: uploadError, clearError: clearUploadError } =
+    useReceiptUpload();
 
   const isSubmitting = isEditing ? isEditing_ : isCreating;
   const error = isEditing ? editError : createError;
@@ -136,6 +142,9 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   const [date, setDate] = useState<string>(
     initialData ? isoToDateInput(initialData.date) : todayAsInput(),
   );
+
+  // URI local selecionada pelo picker (ainda não enviada)
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(EMPTY_ERRORS);
   const [submitted, setSubmitted] = useState(false);
@@ -181,6 +190,26 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   }
 
   // -------------------------------------------------------------------------
+  // Receipt picker
+  // -------------------------------------------------------------------------
+
+  async function handlePickReceipt() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsEditing: false,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      setReceiptUri(result.assets[0].uri);
+      clearUploadError();
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Submit
   // -------------------------------------------------------------------------
 
@@ -201,20 +230,38 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     if (!user) return;
 
     const isoDate = parseDateInput(date)!;
+
+    // ------------------------------------------------------------------
+    // Upload do recibo (opcional) — ocorre antes de salvar a transação.
+    // Se falhar, o submit é interrompido.
+    // ------------------------------------------------------------------
+    let resolvedReceiptUrl: string | null = initialData?.receiptUrl ?? null;
+
+    if (receiptUri) {
+      // Para criação usamos um ID temporário baseado em timestamp;
+      // para edição usamos o ID real da transação.
+      const tempId = isEditing && initialData ? initialData.id : `tmp_${Date.now()}`;
+      const uploadedUrl = await upload(user.id, tempId, receiptUri);
+      if (uploadedUrl === null) {
+        // uploadError já está setado pelo hook — não prosseguir
+        return;
+      }
+      resolvedReceiptUrl = uploadedUrl;
+    }
+
     let success = false;
 
     if (isEditing && initialData) {
-      // Modo edição: passa apenas os campos alteráveis; userId é preservado do doc original
       const result = await edit(initialData.id, initialData.userId, {
         type,
         amount: amountNum,
         category: category.trim(),
         description: description.trim(),
         date: isoDate,
+        receiptUrl: resolvedReceiptUrl,
       });
       success = result !== null;
     } else {
-      // Modo criação
       const result = await create({
         userId: user.id,
         type,
@@ -222,7 +269,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
         category: category.trim(),
         description: description.trim(),
         date: isoDate,
-        receiptUrl: null,
+        receiptUrl: resolvedReceiptUrl,
       });
       success = result !== null;
     }
@@ -420,6 +467,60 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
+        {/* Recibo — opcional */}
+        <View style={s.fieldWrapper}>
+          <Text style={s.label}>
+            Recibo <Text style={s.labelOptional}>(opcional)</Text>
+          </Text>
+
+          {/* Recibo já salvo em modo edição */}
+          {isEditing && initialData?.receiptUrl && !receiptUri ? (
+            <View style={s.receiptBadge} accessibilityRole="text">
+              <Text style={s.receiptBadgeText}>📎 Recibo já anexado</Text>
+            </View>
+          ) : null}
+
+          {/* Preview da imagem selecionada localmente */}
+          {receiptUri ? (
+            <Image
+              source={{ uri: receiptUri }}
+              style={s.receiptPreview}
+              accessibilityLabel="Preview do recibo selecionado"
+              resizeMode="cover"
+            />
+          ) : null}
+
+          {/* Progresso de upload */}
+          {isUploading ? (
+            <View style={s.uploadProgress} accessibilityRole="progressbar" accessibilityValue={{ now: uploadProgress ?? 0, min: 0, max: 100 }}>
+              <ActivityIndicator size="small" color={colors.tint} />
+              <Text style={s.uploadProgressText}>
+                Enviando recibo… {uploadProgress !== null ? `${uploadProgress}%` : ''}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Erro de upload */}
+          {uploadError ? (
+            <Text style={s.fieldError} accessibilityRole="alert">{uploadError}</Text>
+          ) : null}
+
+          <TouchableOpacity
+            style={[s.receiptButton, (isSubmitting || isUploading) && s.buttonDisabled]}
+            onPress={handlePickReceipt}
+            disabled={isSubmitting || isUploading}
+            accessibilityRole="button"
+            accessibilityLabel="Selecionar recibo da galeria">
+            <Text style={s.receiptButtonText}>
+              {receiptUri
+                ? '🔄 Trocar recibo'
+                : isEditing && initialData?.receiptUrl
+                  ? '🔄 Substituir recibo'
+                  : '📎 Anexar recibo'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Botão salvar */}
         <TouchableOpacity
           style={[s.button, isSubmitting && s.buttonDisabled]}
@@ -574,6 +675,52 @@ function makeStyles(colors: (typeof Colors)['light']) {
     pickerOptionTextSelected: {
       color: '#2563eb',
       fontWeight: '700',
+    },
+    receiptBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f0fdf4',
+      borderWidth: 1,
+      borderColor: '#86efac',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginBottom: 8,
+    },
+    receiptBadgeText: {
+      fontSize: 14,
+      color: '#16a34a',
+    },
+    receiptPreview: {
+      width: '100%',
+      height: 160,
+      borderRadius: 8,
+      marginBottom: 8,
+      backgroundColor: '#f3f4f6',
+    },
+    uploadProgress: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
+    },
+    uploadProgressText: {
+      fontSize: 13,
+      color: colors.icon,
+    },
+    receiptButton: {
+      height: 44,
+      borderWidth: 1,
+      borderColor: colors.tint,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    receiptButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.tint,
     },
   });
 }
