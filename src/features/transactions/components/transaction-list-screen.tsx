@@ -21,8 +21,8 @@ import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
 import { useDeleteTransaction } from '../hooks/use-delete-transaction';
-import { useTransactions } from '../hooks/use-transactions';
-import { DEFAULT_FILTER, type TransactionFilter } from '../types/transaction-filter';
+import { useTransactionContext } from '../hooks/use-transaction-context';
+import { DEFAULT_FILTER } from '../types/transaction-filter';
 import type { Transaction } from '../types/transaction';
 import { TransactionFilterBar } from './transaction-filter-bar';
 import { TransactionItem } from './transaction-item';
@@ -30,6 +30,8 @@ import { TransactionItem } from './transaction-item';
 /**
  * Tela principal de transações.
  *
+ * - Consome o estado global de transações via TransactionContext,
+ *   evitando instâncias isoladas de useTransactions por tela.
  * - Recarrega via useFocusEffect ao voltar de criação ou edição,
  *   mas apenas se a tela já tiver sido montada (evita requisição dupla inicial).
  * - Suporta scroll infinito via onEndReached + loadMore.
@@ -41,7 +43,6 @@ export function TransactionListScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [filter, setFilter] = useState<TransactionFilter>(DEFAULT_FILTER);
   const [showFilters, setShowFilters] = useState(false);
 
   const {
@@ -50,9 +51,11 @@ export function TransactionListScreen() {
     isLoadingMore,
     hasMore,
     error,
+    filter,
+    setFilter,
     refresh,
     loadMore,
-  } = useTransactions(user?.id ?? null, filter);
+  } = useTransactionContext();
 
   const { remove, isDeleting, error: deleteError } = useDeleteTransaction();
 
@@ -117,7 +120,7 @@ export function TransactionListScreen() {
     }
   }
 
-  function handleApplyFilter(newFilter: TransactionFilter) {
+  function handleApplyFilter(newFilter: Parameters<typeof setFilter>[0]) {
     setFilter(newFilter);
     setShowFilters(false);
   }
