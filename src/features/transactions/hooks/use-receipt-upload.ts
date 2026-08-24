@@ -1,10 +1,14 @@
 import { useCallback, useState } from 'react';
 
-import { uploadReceipt } from '@/src/lib/firebase/storage-service';
+import { uploadAttachment } from '@/src/lib/firebase/storage-service';
+import type { SelectedAttachment } from '@/src/features/receipts/types/selected-attachment';
 
 interface UseReceiptUploadResult {
-  /** Faz o upload do arquivo e retorna a URL pública, ou null em caso de erro. */
-  upload: (userId: string, transactionId: string, uri: string) => Promise<string | null>;
+  /**
+   * Faz o upload do arquivo e retorna a URL pública, ou null em caso de erro.
+   * Aceita um SelectedAttachment (imagem, PDF ou TXT).
+   */
+  upload: (userId: string, transactionId: string, attachment: SelectedAttachment) => Promise<string | null>;
   /** Progresso do upload em % (0–100). Null enquanto não iniciado. */
   progress: number | null;
   isUploading: boolean;
@@ -13,7 +17,8 @@ interface UseReceiptUploadResult {
 }
 
 /**
- * Encapsula o upload de recibo para o Firebase Storage.
+ * Encapsula o upload de anexo para o Firebase Storage.
+ * Suporta imagens (JPEG, PNG), PDF e TXT.
  * Mantido independente do form para ser reutilizável em outros contextos.
  */
 export function useReceiptUpload(): UseReceiptUploadResult {
@@ -22,19 +27,27 @@ export function useReceiptUpload(): UseReceiptUploadResult {
   const [error, setError] = useState<string | null>(null);
 
   const upload = useCallback(
-    async (userId: string, transactionId: string, uri: string): Promise<string | null> => {
+    async (
+      userId: string,
+      transactionId: string,
+      attachment: SelectedAttachment,
+    ): Promise<string | null> => {
       setIsUploading(true);
       setProgress(0);
       setError(null);
 
       try {
-        const url = await uploadReceipt(userId, transactionId, uri, (pct) => {
-          setProgress(pct);
-        });
+        const url = await uploadAttachment(
+          userId,
+          transactionId,
+          attachment.uri,
+          attachment.mimeType,
+          (pct) => setProgress(pct),
+        );
         return url;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : 'Não foi possível enviar o recibo.';
+          err instanceof Error ? err.message : 'Não foi possível enviar o anexo.';
         setError(message);
         return null;
       } finally {

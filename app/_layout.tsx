@@ -1,3 +1,8 @@
+// Polyfill carregado antes de qualquer outro módulo.
+// Deve ser o primeiro import para garantir que AbortSignal.any esteja disponível
+// antes de qualquer inicialização do Firebase AI Logic.
+import '@/src/polyfills/abort-signal-any';
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/src/features/auth';
 import { ErrorMessage } from '@/src/shared/components/error-message';
@@ -85,6 +86,7 @@ function MovimentacaoRow({ label, value, color, prefix = '' }: MovimentacaoRowPr
 export function DashboardScreen() {
   const { user } = useAuth();
   const { summary, isLoading, error, refresh } = useDashboard(user?.id ?? null);
+  const insets = useSafeAreaInsets();
 
   // Animated values para fade-in + slide-up
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -173,7 +175,7 @@ export function DashboardScreen() {
     >
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ---------------------------------------------------------------- */}
@@ -283,7 +285,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 32,
     gap: 24,
   },

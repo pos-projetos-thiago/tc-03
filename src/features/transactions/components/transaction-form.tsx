@@ -1,9 +1,6 @@
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +14,9 @@ import {
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/src/features/auth';
+import { AttachmentPicker } from '@/src/features/receipts/components/attachment-picker';
+import { useTransactionExtraction } from '@/src/features/receipts/hooks/use-transaction-extraction';
+import type { SelectedAttachment } from '@/src/features/receipts/types/selected-attachment';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validateAmount } from '@/src/shared/utils/validators';
 
@@ -121,6 +121,8 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     useEditTransaction();
   const { upload, progress: uploadProgress, isUploading, error: uploadError, clearError: clearUploadError } =
     useReceiptUpload();
+  const { analyze, isAnalyzing, result: extractionResult, error: extractionError, reset: resetExtraction } =
+    useTransactionExtraction();
 
   const isSubmitting = isEditing ? isEditing_ : isCreating;
   const error = isEditing ? editError : createError;
@@ -144,10 +146,53 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   );
 
   // URI local selecionada pelo picker (ainda não enviada)
-  const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [selectedAttachment, setSelectedAttachment] = useState<SelectedAttachment | null>(null);
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(EMPTY_ERRORS);
   const [submitted, setSubmitted] = useState(false);
+
+  // -------------------------------------------------------------------------
+  // Análise por IA — pré-preenche apenas campos ainda vazios
+  // -------------------------------------------------------------------------
+
+  async function handleAnalyzeWithAI() {
+    if (!selectedAttachment) return;
+    const result = await analyze(selectedAttachment);
+    if (!result) return; // erro já está em extractionError
+
+    // Preenche somente campos vazios — preserva o que o usuário já digitou
+    if (result.type !== null && type === 'expense') {
+      // 'expense' é o default inicial; se o usuário não tocou no tipo, aplica a sugestão
+      setType(result.type);
+      // Para investment, pré-seleciona a primeira categoria
+      if (result.type === 'investment' && !category) {
+        setCategory(INVESTMENT_CATEGORIES[0]);
+      }
+    }
+    if (result.amount !== null && !amount) {
+      setAmount(String(result.amount));
+    }
+    if (result.category !== null && !category) {
+      setCategory(result.category);
+    }
+    if (result.description !== null && !description) {
+      setDescription(result.description);
+    }
+    if (result.date !== null && date === todayAsInput()) {
+      // Preenche a data somente se ainda estiver com o valor padrão de hoje
+      try {
+        const d = new Date(result.date);
+        if (!isNaN(d.getTime())) {
+          const dd = String(d.getUTCDate()).padStart(2, '0');
+          const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const yyyy = d.getUTCFullYear();
+          setDate(`${dd}/${mm}/${yyyy}`);
+        }
+      } catch {
+        // data inválida — ignora silenciosamente
+      }
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Field change handlers
@@ -190,26 +235,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   }
 
   // -------------------------------------------------------------------------
-  // Receipt picker
-  // -------------------------------------------------------------------------
-
-  async function handlePickReceipt() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: false,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      setReceiptUri(result.assets[0].uri);
-      clearUploadError();
-    }
-  }
-
-  // -------------------------------------------------------------------------
   // Submit
   // -------------------------------------------------------------------------
 
@@ -232,16 +257,16 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     const isoDate = parseDateInput(date)!;
 
     // ------------------------------------------------------------------
-    // Upload do recibo (opcional) — ocorre antes de salvar a transação.
+    // Upload do anexo (opcional) — ocorre antes de salvar a transação.
     // Se falhar, o submit é interrompido.
     // ------------------------------------------------------------------
     let resolvedReceiptUrl: string | null = initialData?.receiptUrl ?? null;
 
-    if (receiptUri) {
+    if (selectedAttachment) {
       // Para criação usamos um ID temporário baseado em timestamp;
       // para edição usamos o ID real da transação.
       const tempId = isEditing && initialData ? initialData.id : `tmp_${Date.now()}`;
-      const uploadedUrl = await upload(user.id, tempId, receiptUri);
+      const uploadedUrl = await upload(user.id, tempId, selectedAttachment);
       if (uploadedUrl === null) {
         // uploadError já está setado pelo hook — não prosseguir
         return;
@@ -467,59 +492,73 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Recibo — opcional */}
+        {/* Anexo — opcional */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>
-            Recibo <Text style={s.labelOptional}>(opcional)</Text>
+            Anexo <Text style={s.labelOptional}>(opcional)</Text>
           </Text>
-
-          {/* Recibo já salvo em modo edição */}
-          {isEditing && initialData?.receiptUrl && !receiptUri ? (
-            <View style={s.receiptBadge} accessibilityRole="text">
-              <Text style={s.receiptBadgeText}>📎 Recibo já anexado</Text>
-            </View>
-          ) : null}
-
-          {/* Preview da imagem selecionada localmente */}
-          {receiptUri ? (
-            <Image
-              source={{ uri: receiptUri }}
-              style={s.receiptPreview}
-              accessibilityLabel="Preview do recibo selecionado"
-              resizeMode="cover"
-            />
-          ) : null}
-
-          {/* Progresso de upload */}
-          {isUploading ? (
-            <View style={s.uploadProgress} accessibilityRole="progressbar" accessibilityValue={{ now: uploadProgress ?? 0, min: 0, max: 100 }}>
-              <ActivityIndicator size="small" color={colors.tint} />
-              <Text style={s.uploadProgressText}>
-                Enviando recibo… {uploadProgress !== null ? `${uploadProgress}%` : ''}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Erro de upload */}
-          {uploadError ? (
-            <Text style={s.fieldError} accessibilityRole="alert">{uploadError}</Text>
-          ) : null}
-
-          <TouchableOpacity
-            style={[s.receiptButton, (isSubmitting || isUploading) && s.buttonDisabled]}
-            onPress={handlePickReceipt}
-            disabled={isSubmitting || isUploading}
-            accessibilityRole="button"
-            accessibilityLabel="Selecionar recibo da galeria">
-            <Text style={s.receiptButtonText}>
-              {receiptUri
-                ? '🔄 Trocar recibo'
-                : isEditing && initialData?.receiptUrl
-                  ? '🔄 Substituir recibo'
-                  : '📎 Anexar recibo'}
-            </Text>
-          </TouchableOpacity>
+          <AttachmentPicker
+            selectedAttachment={selectedAttachment}
+            existingAttachmentUrl={initialData?.receiptUrl ?? null}
+            onSelect={(attachment) => {
+              setSelectedAttachment(attachment);
+              resetExtraction();
+              if (uploadError) clearUploadError();
+            }}
+            disabled={isSubmitting}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            uploadError={uploadError}
+          />
         </View>
+
+        {/* Importar com IA — visível somente quando há anexo selecionado */}
+        {selectedAttachment && !isEditing ? (
+          <View style={s.fieldWrapper}>
+
+            {/* Botão de análise */}
+            <TouchableOpacity
+              style={[
+                s.aiButton,
+                (isAnalyzing || isSubmitting) && s.buttonDisabled,
+              ]}
+              onPress={handleAnalyzeWithAI}
+              disabled={isAnalyzing || isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel="Analisar documento com IA"
+              accessibilityState={{ busy: isAnalyzing }}>
+              <Text style={s.aiButtonText}>
+                {isAnalyzing ? '⏳ Analisando documento…' : '✨ Importar com IA'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Aviso de baixa confiança */}
+            {extractionResult?.confidence === 'low' ? (
+              <View style={s.aiWarningBanner} accessibilityRole="alert">
+                <Text style={s.aiWarningText}>
+                  ⚠️ A IA não tem certeza sobre alguns dados. Confira antes de salvar.
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Confirmação de extração bem-sucedida (confidence high/medium) */}
+            {extractionResult && extractionResult.confidence !== 'low' ? (
+              <View style={s.aiSuccessBanner}>
+                <Text style={s.aiSuccessText}>
+                  ✅ Dados preenchidos pela IA. Revise e confirme antes de salvar.
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Erro de extração */}
+            {extractionError ? (
+              <View style={s.errorBanner} accessibilityRole="alert">
+                <Text style={s.errorBannerText}>{extractionError}</Text>
+              </View>
+            ) : null}
+
+          </View>
+        ) : null}
 
         {/* Botão salvar */}
         <TouchableOpacity
@@ -676,51 +715,39 @@ function makeStyles(colors: (typeof Colors)['light']) {
       color: '#2563eb',
       fontWeight: '700',
     },
-    receiptBadge: {
-      flexDirection: 'row',
+    aiButton: {
+      height: 48,
+      backgroundColor: '#7c3aed',
+      borderRadius: 10,
+      justifyContent: 'center',
       alignItems: 'center',
+    },
+    aiButtonText: {
+      color: '#ffffff',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    aiWarningBanner: {
+      backgroundColor: '#fffbeb',
+      borderWidth: 1,
+      borderColor: '#fcd34d',
+      borderRadius: 8,
+      padding: 10,
+    },
+    aiWarningText: {
+      color: '#92400e',
+      fontSize: 13,
+    },
+    aiSuccessBanner: {
       backgroundColor: '#f0fdf4',
       borderWidth: 1,
       borderColor: '#86efac',
       borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      marginBottom: 8,
+      padding: 10,
     },
-    receiptBadgeText: {
-      fontSize: 14,
-      color: '#16a34a',
-    },
-    receiptPreview: {
-      width: '100%',
-      height: 160,
-      borderRadius: 8,
-      marginBottom: 8,
-      backgroundColor: '#f3f4f6',
-    },
-    uploadProgress: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 8,
-    },
-    uploadProgressText: {
+    aiSuccessText: {
+      color: '#166534',
       fontSize: 13,
-      color: colors.icon,
-    },
-    receiptButton: {
-      height: 44,
-      borderWidth: 1,
-      borderColor: colors.tint,
-      borderRadius: 8,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-    },
-    receiptButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.tint,
     },
   });
 }

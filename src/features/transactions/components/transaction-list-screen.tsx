@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/src/features/auth';
@@ -38,6 +39,7 @@ export function TransactionListScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [filter, setFilter] = useState<TransactionFilter>(DEFAULT_FILTER);
   const [showFilters, setShowFilters] = useState(false);
@@ -159,7 +161,7 @@ export function TransactionListScreen() {
   return (
     <View style={styles.container}>
       {/* Cabeçalho */}
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, paddingTop: insets.top + 16 }]}>
         <Text style={[styles.title, { color: colors.text }]}>Transações</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -256,7 +258,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e5e7eb',
