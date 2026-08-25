@@ -14,11 +14,15 @@ import {
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/src/features/auth';
+import { AttachmentPicker } from '@/src/features/receipts/components/attachment-picker';
+import { useTransactionExtraction } from '@/src/features/receipts/hooks/use-transaction-extraction';
+import type { SelectedAttachment } from '@/src/features/receipts/types/selected-attachment';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validateAmount } from '@/src/shared/utils/validators';
 
 import { useCreateTransaction } from '../hooks/use-create-transaction';
 import { useEditTransaction } from '../hooks/use-edit-transaction';
+import { useReceiptUpload } from '../hooks/use-receipt-upload';
 import type { Transaction, TransactionType } from '../types/transaction';
 import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 
@@ -115,6 +119,10 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     useCreateTransaction();
   const { edit, isSubmitting: isEditing_, error: editError, clearError: clearEditError } =
     useEditTransaction();
+  const { upload, progress: uploadProgress, isUploading, error: uploadError, clearError: clearUploadError } =
+    useReceiptUpload();
+  const { analyze, isAnalyzing, result: extractionResult, error: extractionError, reset: resetExtraction } =
+    useTransactionExtraction();
 
   const isSubmitting = isEditing ? isEditing_ : isCreating;
   const error = isEditing ? editError : createError;
@@ -137,8 +145,54 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     initialData ? isoToDateInput(initialData.date) : todayAsInput(),
   );
 
+  // URI local selecionada pelo picker (ainda não enviada)
+  const [selectedAttachment, setSelectedAttachment] = useState<SelectedAttachment | null>(null);
+
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(EMPTY_ERRORS);
   const [submitted, setSubmitted] = useState(false);
+
+  // -------------------------------------------------------------------------
+  // Análise por IA — pré-preenche apenas campos ainda vazios
+  // -------------------------------------------------------------------------
+
+  async function handleAnalyzeWithAI() {
+    if (!selectedAttachment) return;
+    const result = await analyze(selectedAttachment);
+    if (!result) return; // erro já está em extractionError
+
+    // Preenche somente campos vazios — preserva o que o usuário já digitou
+    if (result.type !== null && type === 'expense') {
+      // 'expense' é o default inicial; se o usuário não tocou no tipo, aplica a sugestão
+      setType(result.type);
+      // Para investment, pré-seleciona a primeira categoria
+      if (result.type === 'investment' && !category) {
+        setCategory(INVESTMENT_CATEGORIES[0]);
+      }
+    }
+    if (result.amount !== null && !amount) {
+      setAmount(String(result.amount));
+    }
+    if (result.category !== null && !category) {
+      setCategory(result.category);
+    }
+    if (result.description !== null && !description) {
+      setDescription(result.description);
+    }
+    if (result.date !== null && date === todayAsInput()) {
+      // Preenche a data somente se ainda estiver com o valor padrão de hoje
+      try {
+        const d = new Date(result.date);
+        if (!isNaN(d.getTime())) {
+          const dd = String(d.getUTCDate()).padStart(2, '0');
+          const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const yyyy = d.getUTCFullYear();
+          setDate(`${dd}/${mm}/${yyyy}`);
+        }
+      } catch {
+        // data inválida — ignora silenciosamente
+      }
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Field change handlers
@@ -201,20 +255,38 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     if (!user) return;
 
     const isoDate = parseDateInput(date)!;
+
+    // ------------------------------------------------------------------
+    // Upload do anexo (opcional) — ocorre antes de salvar a transação.
+    // Se falhar, o submit é interrompido.
+    // ------------------------------------------------------------------
+    let resolvedReceiptUrl: string | null = initialData?.receiptUrl ?? null;
+
+    if (selectedAttachment) {
+      // Para criação usamos um ID temporário baseado em timestamp;
+      // para edição usamos o ID real da transação.
+      const tempId = isEditing && initialData ? initialData.id : `tmp_${Date.now()}`;
+      const uploadedUrl = await upload(user.id, tempId, selectedAttachment);
+      if (uploadedUrl === null) {
+        // uploadError já está setado pelo hook — não prosseguir
+        return;
+      }
+      resolvedReceiptUrl = uploadedUrl;
+    }
+
     let success = false;
 
     if (isEditing && initialData) {
-      // Modo edição: passa apenas os campos alteráveis; userId é preservado do doc original
       const result = await edit(initialData.id, initialData.userId, {
         type,
         amount: amountNum,
         category: category.trim(),
         description: description.trim(),
         date: isoDate,
+        receiptUrl: resolvedReceiptUrl,
       });
       success = result !== null;
     } else {
-      // Modo criação
       const result = await create({
         userId: user.id,
         type,
@@ -222,7 +294,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
         category: category.trim(),
         description: description.trim(),
         date: isoDate,
-        receiptUrl: null,
+        receiptUrl: resolvedReceiptUrl,
       });
       success = result !== null;
     }
@@ -420,6 +492,74 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
+        {/* Anexo — opcional */}
+        <View style={s.fieldWrapper}>
+          <Text style={s.label}>
+            Anexo <Text style={s.labelOptional}>(opcional)</Text>
+          </Text>
+          <AttachmentPicker
+            selectedAttachment={selectedAttachment}
+            existingAttachmentUrl={initialData?.receiptUrl ?? null}
+            onSelect={(attachment) => {
+              setSelectedAttachment(attachment);
+              resetExtraction();
+              if (uploadError) clearUploadError();
+            }}
+            disabled={isSubmitting}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            uploadError={uploadError}
+          />
+        </View>
+
+        {/* Importar com IA — visível somente quando há anexo selecionado */}
+        {selectedAttachment && !isEditing ? (
+          <View style={s.fieldWrapper}>
+
+            {/* Botão de análise */}
+            <TouchableOpacity
+              style={[
+                s.aiButton,
+                (isAnalyzing || isSubmitting) && s.buttonDisabled,
+              ]}
+              onPress={handleAnalyzeWithAI}
+              disabled={isAnalyzing || isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel="Analisar documento com IA"
+              accessibilityState={{ busy: isAnalyzing }}>
+              <Text style={s.aiButtonText}>
+                {isAnalyzing ? '⏳ Analisando documento…' : '✨ Importar com IA'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Aviso de baixa confiança */}
+            {extractionResult?.confidence === 'low' ? (
+              <View style={s.aiWarningBanner} accessibilityRole="alert">
+                <Text style={s.aiWarningText}>
+                  ⚠️ A IA não tem certeza sobre alguns dados. Confira antes de salvar.
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Confirmação de extração bem-sucedida (confidence high/medium) */}
+            {extractionResult && extractionResult.confidence !== 'low' ? (
+              <View style={s.aiSuccessBanner}>
+                <Text style={s.aiSuccessText}>
+                  ✅ Dados preenchidos pela IA. Revise e confirme antes de salvar.
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Erro de extração */}
+            {extractionError ? (
+              <View style={s.errorBanner} accessibilityRole="alert">
+                <Text style={s.errorBannerText}>{extractionError}</Text>
+              </View>
+            ) : null}
+
+          </View>
+        ) : null}
+
         {/* Botão salvar */}
         <TouchableOpacity
           style={[s.button, isSubmitting && s.buttonDisabled]}
@@ -574,6 +714,40 @@ function makeStyles(colors: (typeof Colors)['light']) {
     pickerOptionTextSelected: {
       color: '#2563eb',
       fontWeight: '700',
+    },
+    aiButton: {
+      height: 48,
+      backgroundColor: '#7c3aed',
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    aiButtonText: {
+      color: '#ffffff',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    aiWarningBanner: {
+      backgroundColor: '#fffbeb',
+      borderWidth: 1,
+      borderColor: '#fcd34d',
+      borderRadius: 8,
+      padding: 10,
+    },
+    aiWarningText: {
+      color: '#92400e',
+      fontSize: 13,
+    },
+    aiSuccessBanner: {
+      backgroundColor: '#f0fdf4',
+      borderWidth: 1,
+      borderColor: '#86efac',
+      borderRadius: 8,
+      padding: 10,
+    },
+    aiSuccessText: {
+      color: '#166534',
+      fontSize: 13,
     },
   });
 }

@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Platform,
@@ -10,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/src/features/auth';
@@ -19,34 +21,56 @@ import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
 import { useDeleteTransaction } from '../hooks/use-delete-transaction';
-import { useTransactions } from '../hooks/use-transactions';
-import { DEFAULT_FILTER, type TransactionFilter } from '../types/transaction-filter';
+import { useTransactionContext } from '../hooks/use-transaction-context';
+import { DEFAULT_FILTER } from '../types/transaction-filter';
 import type { Transaction } from '../types/transaction';
 import { TransactionFilterBar } from './transaction-filter-bar';
 import { TransactionItem } from './transaction-item';
 
 /**
  * Tela principal de transações.
- * Recarrega via useFocusEffect ao voltar de criação ou edição.
- * Suporta filtro por tipo, categoria e período.
+ *
+ * - Consome o estado global de transações via TransactionContext,
+ *   evitando instâncias isoladas de useTransactions por tela.
+ * - Recarrega via useFocusEffect ao voltar de criação ou edição,
+ *   mas apenas se a tela já tiver sido montada (evita requisição dupla inicial).
+ * - Suporta scroll infinito via onEndReached + loadMore.
+ * - Suporta filtro por tipo, categoria e período.
  */
 export function TransactionListScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
-  const [filter, setFilter] = useState<TransactionFilter>(DEFAULT_FILTER);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { transactions, isLoading, error, refresh } = useTransactions(user?.id ?? null, filter);
+  const {
+    transactions,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    filter,
+    setFilter,
+    refresh,
+    loadMore,
+  } = useTransactionContext();
+
   const { remove, isDeleting, error: deleteError } = useDeleteTransaction();
 
   const isFilterActive =
     filter.type !== null || filter.category !== null || filter.dateRange !== null;
 
-  // Recarrega sempre que a tela ganhar foco (retorno de criar/editar)
+  // Controla se a tela já foi montada para evitar refresh duplo na abertura
+  const hasMountedRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
+      if (!hasMountedRef.current) {
+        hasMountedRef.current = true;
+        return;
+      }
       refresh();
     }, [refresh]),
   );
@@ -67,7 +91,6 @@ export function TransactionListScreen() {
 
   function handleDeleteRequest(transaction: Transaction) {
     if (Platform.OS === 'web') {
-      // Alert.alert é no-op no React Native Web — usa o diálogo nativo do browser
       const confirmed = window.confirm(
         `Deseja excluir "${transaction.description}"? Esta ação não pode ser desfeita.`,
       );
@@ -97,7 +120,7 @@ export function TransactionListScreen() {
     }
   }
 
-  function handleApplyFilter(newFilter: TransactionFilter) {
+  function handleApplyFilter(newFilter: Parameters<typeof setFilter>[0]) {
     setFilter(newFilter);
     setShowFilters(false);
   }
@@ -107,18 +130,41 @@ export function TransactionListScreen() {
     setShowFilters(false);
   }
 
+  function handleEndReached() {
+    if (hasMore && !isLoadingMore && !isLoading) {
+      loadMore();
+    }
+  }
+
   // -------------------------------------------------------------------------
-  // Render
+  // Render helpers
+  // -------------------------------------------------------------------------
+
+  function renderFooter() {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.tint} />
+      </View>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Loading inicial (primeira carga sem filtro ativo)
   // -------------------------------------------------------------------------
 
   if (isLoading && transactions.length === 0 && !isFilterActive) {
     return <LoadingSpinner fullScreen />;
   }
 
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+
   return (
     <View style={styles.container}>
       {/* Cabeçalho */}
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, paddingTop: insets.top + 16 }]}>
         <Text style={[styles.title, { color: colors.text }]}>Transações</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -178,15 +224,28 @@ export function TransactionListScreen() {
             tintColor={colors.tint}
           />
         }
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={renderFooter}
         ListEmptyComponent={
           !error ? (
             <EmptyState
-              message={isFilterActive ? 'Nenhum resultado para os filtros aplicados' : 'Nenhuma transação encontrada'}
-              description={isFilterActive ? 'Tente ajustar ou limpar os filtros.' : "Toque em '+ Nova' para adicionar sua primeira transação."}
+              message={
+                isFilterActive
+                  ? 'Nenhum resultado para os filtros aplicados'
+                  : 'Nenhuma transação encontrada'
+              }
+              description={
+                isFilterActive
+                  ? 'Tente ajustar ou limpar os filtros.'
+                  : "Toque em '+ Nova' para adicionar sua primeira transação."
+              }
             />
           ) : null
         }
-        contentContainerStyle={transactions.length === 0 ? styles.emptyContent : undefined}
+        contentContainerStyle={
+          transactions.length === 0 ? styles.emptyContent : undefined
+        }
       />
     </View>
   );
@@ -202,7 +261,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e5e7eb',
@@ -239,5 +297,9 @@ const styles = StyleSheet.create({
   },
   emptyContent: {
     flex: 1,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });
