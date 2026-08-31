@@ -1,11 +1,17 @@
 import {
+  confirmPasswordReset as firebaseConfirmPasswordReset,
   createUserWithEmailAndPassword,
   onAuthStateChanged as firebaseOnAuthStateChanged,
+  reload,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
+  updateProfile,
+  verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
 } from 'firebase/auth';
 
 import { auth } from '@/src/lib/firebase/auth';
+import { getPasswordResetActionCodeSettings } from '../utils/password-reset-linking';
 import type { IAuthService } from '../types/auth-service.interface';
 import type { User } from '../types/user';
 
@@ -19,9 +25,28 @@ class FirebaseAuthService implements IAuthService {
     return this.mapUser(user);
   }
 
-  async signUp(email: string, password: string): Promise<User> {
+  async signUp(email: string, password: string, name: string): Promise<User> {
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
+    const trimmedName = name.trim();
+    await updateProfile(user, { displayName: trimmedName });
+    await reload(user);
     return this.mapUser(user);
+  }
+
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    await firebaseSendPasswordResetEmail(
+      auth,
+      email,
+      getPasswordResetActionCodeSettings(),
+    );
+  }
+
+  async verifyPasswordResetCode(oobCode: string): Promise<string> {
+    return firebaseVerifyPasswordResetCode(auth, oobCode);
+  }
+
+  async confirmPasswordReset(oobCode: string, newPassword: string): Promise<void> {
+    await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
   }
 
   async signOut(): Promise<void> {

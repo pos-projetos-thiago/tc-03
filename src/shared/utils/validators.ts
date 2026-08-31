@@ -1,3 +1,11 @@
+export function validateName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return 'Nome é obrigatório';
+  if (trimmed.length < 2) return 'O nome deve ter no mínimo 2 caracteres';
+  if (trimmed.length > 100) return 'O nome deve ter no máximo 100 caracteres';
+  return null;
+}
+
 export function validateEmail(email: string): string | null {
   if (!email.trim()) return 'E-mail é obrigatório';
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

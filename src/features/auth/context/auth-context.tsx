@@ -10,7 +10,10 @@ export interface AuthContextValue {
   /** Mensagem de erro da última operação de auth, ou `null`. */
   error: string | null;
   signIn(email: string, password: string): Promise<void>;
-  signUp(email: string, password: string): Promise<void>;
+  signUp(email: string, password: string, name: string): Promise<void>;
+  sendPasswordResetEmail(email: string): Promise<boolean>;
+  verifyPasswordResetCode(oobCode: string): Promise<string>;
+  confirmPasswordReset(oobCode: string, newPassword: string): Promise<void>;
   signOut(): Promise<void>;
   /** Limpa o erro atual. */
   clearError(): void;

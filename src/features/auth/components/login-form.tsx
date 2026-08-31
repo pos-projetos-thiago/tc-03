@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { isFirebaseConfigured } from '@/src/lib/firebase/config';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validateEmail, validatePassword } from '@/src/shared/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,6 +88,16 @@ export function LoginForm() {
         </View>
 
         {/* Erro global do Firebase (retornado pelo AuthProvider) */}
+        {!isFirebaseConfigured() ? (
+          <View style={s.errorBanner} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <Text style={s.errorBannerText}>
+              Firebase não configurado. Crie o arquivo .env com EXPO_PUBLIC_FIREBASE_* (copie de
+              .env.example), preencha com os dados do projeto e reinicie com npx expo start --clear
+              --tunnel.
+            </Text>
+          </View>
+        ) : null}
+
         {error ? (
           <View style={s.errorBanner} accessibilityRole="alert" accessibilityLiveRegion="polite">
             <Text style={s.errorBannerText}>{error}</Text>
@@ -156,6 +167,17 @@ export function LoginForm() {
               {fieldErrors.password}
             </Text>
           ) : null}
+          <Link href="/(auth)/forgot-password" asChild>
+            <TouchableOpacity
+              style={s.forgotPasswordLink}
+              accessibilityRole="link"
+              accessibilityLabel="Esqueci minha senha"
+              disabled={isLoading}>
+              <Text style={[s.forgotPasswordText, isLoading && s.linkDisabled]}>
+                Esqueci minha senha
+              </Text>
+            </TouchableOpacity>
+          </Link>
         </View>
 
         {/* Botão Entrar */}
@@ -273,6 +295,15 @@ function makeStyles(colors: (typeof Colors)['light']) {
     fieldError: {
       fontSize: 12,
       color: '#ef4444',
+    },
+    forgotPasswordLink: {
+      alignSelf: 'flex-end',
+      marginTop: 4,
+    },
+    forgotPasswordText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.tint,
     },
     eyeButton: {
       padding: 4,

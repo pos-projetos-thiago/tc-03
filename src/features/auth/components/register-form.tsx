@@ -14,11 +14,12 @@ import {
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
-import { validateEmail, validatePassword } from '@/src/shared/utils/validators';
+import { validateEmail, validateName, validatePassword } from '@/src/shared/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/use-auth';
 
 interface FieldError {
+  name: string | null;
   email: string | null;
   password: string | null;
   confirmPassword: string | null;
@@ -29,12 +30,14 @@ export function RegisterForm() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldError>({
+    name: null,
     email: null,
     password: null,
     confirmPassword: null,
@@ -52,6 +55,14 @@ export function RegisterForm() {
     if (!value) return 'Confirmação de senha é obrigatória';
     if (value !== pwd) return 'As senhas não coincidem';
     return null;
+  }
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (submitted) {
+      setFieldErrors((prev) => ({ ...prev, name: validateName(value) }));
+    }
+    if (error) clearError();
   }
 
   function handleEmailChange(value: string) {
@@ -88,15 +99,21 @@ export function RegisterForm() {
   async function handleSubmit() {
     setSubmitted(true);
 
+    const nameError = validateName(name);
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword, password);
 
-    setFieldErrors({ email: emailError, password: passwordError, confirmPassword: confirmPasswordError });
+    setFieldErrors({
+      name: nameError,
+      email: emailError,
+      password: passwordError,
+      confirmPassword: confirmPasswordError,
+    });
 
-    if (emailError || passwordError || confirmPasswordError) return;
+    if (nameError || emailError || passwordError || confirmPasswordError) return;
 
-    await signUp(email, password);
+    await signUp(email, password, name.trim());
   }
 
   const s = makeStyles(colors);
@@ -122,6 +139,31 @@ export function RegisterForm() {
             <Text style={s.errorBannerText}>{error}</Text>
           </View>
         ) : null}
+
+        {/* Campo nome */}
+        <View style={s.fieldWrapper}>
+          <Text style={s.label}>Nome</Text>
+          <TextInput
+            style={[s.input, fieldErrors.name ? s.inputError : null]}
+            value={name}
+            onChangeText={handleNameChange}
+            placeholder="Seu nome"
+            placeholderTextColor={colors.icon}
+            autoCapitalize="words"
+            autoCorrect={false}
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="next"
+            accessibilityLabel="Campo de nome"
+            accessibilityHint="Digite seu nome completo"
+            editable={!isLoading}
+          />
+          {fieldErrors.name ? (
+            <Text style={s.fieldError} accessibilityRole="alert" accessibilityLiveRegion="polite">
+              {fieldErrors.name}
+            </Text>
+          ) : null}
+        </View>
 
         {/* Campo e-mail */}
         <View style={s.fieldWrapper}>
