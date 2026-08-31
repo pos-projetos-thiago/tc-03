@@ -35,7 +35,11 @@ export function useDashboard(
   const load = useCallback(async () => {
     if (!userId) return;
 
-    setState({ summary: null, isLoading: true, error: null });
+    setState((prev) => ({
+      summary: prev.summary,
+      isLoading: true,
+      error: null,
+    }));
 
     try {
       const summary = await dashboardService.getSummary(userId, referenceMonth);

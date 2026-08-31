@@ -4,15 +4,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import { TransactionItem } from '@/src/features/transactions';
 import type { Transaction } from '@/src/features/transactions';
 
+import { DashboardPalette } from './dashboard-palette';
+
 interface RecentTransactionsSectionProps {
   transactions: Transaction[];
 }
 
-/**
- * Exibe as transações recentes do Dashboard em modo readonly.
- * Ordena por data decrescente antes da exibição.
- * Reutiliza o TransactionItem existente sem ações de edição/exclusão.
- */
 export function RecentTransactionsSection({
   transactions,
 }: RecentTransactionsSectionProps) {
@@ -34,12 +31,11 @@ export function RecentTransactionsSection({
 
   return (
     <View style={styles.list}>
-      {sorted.map((transaction) => (
-        <TransactionItem
-          key={transaction.id}
-          transaction={transaction}
-        // readonly: sem onPress nem onDelete
-        />
+      {sorted.map((transaction, index) => (
+        <View key={transaction.id}>
+          {index > 0 ? <View style={styles.divider} /> : null}
+          <TransactionItem transaction={transaction} />
+        </View>
       ))}
     </View>
   );
@@ -47,21 +43,27 @@ export function RecentTransactionsSection({
 
 const styles = StyleSheet.create({
   list: {
-    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: DashboardPalette.border,
+    borderRadius: 4,
+    backgroundColor: DashboardPalette.surface,
     overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: DashboardPalette.divider,
+    marginLeft: 16,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: DashboardPalette.border,
+    borderRadius: 4,
+    backgroundColor: DashboardPalette.surface,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: DashboardPalette.textMuted,
   },
 });
