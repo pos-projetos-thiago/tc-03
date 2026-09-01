@@ -1,22 +1,16 @@
-import { DonutChart } from 'expo-skia-charts';
 import type { ProcessedSegment } from 'expo-skia-charts';
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
 
-import { DashboardPalette } from './dashboard-palette';
+import { useDashboardColors } from './dashboard-palette';
 import {
   ChartCenterContent,
+  DashboardDonutChart,
   DONUT_CHART_STYLE,
   DonutChartLegend,
-  chartSectionStyles,
+  useChartSectionStyles,
   useDonutChartHeight,
 } from './donut-chart-ui';
-
-const COLOR_BY_LABEL: Record<string, string> = {
-  Depósitos: DashboardPalette.income,
-  Saques: DashboardPalette.expense,
-  Investimentos: DashboardPalette.investment,
-};
 
 interface MonthlyMovementChartProps {
   totalIncome: number;
@@ -41,7 +35,18 @@ export function MonthlyMovementChart({
   totalExpense,
   totalInvested,
 }: MonthlyMovementChartProps) {
+  const colors = useDashboardColors();
+  const chartSectionStyles = useChartSectionStyles();
   const chartHeight = useDonutChartHeight('primary');
+
+  const colorByLabel = useMemo(
+    () => ({
+      Depósitos: colors.income,
+      Saques: colors.expense,
+      Investimentos: colors.investment,
+    }),
+    [colors],
+  );
 
   const chartData = useMemo(
     () => buildChartData(totalIncome, totalExpense, totalInvested),
@@ -51,9 +56,9 @@ export function MonthlyMovementChart({
   const chartColors = useMemo(
     () =>
       chartData.map(
-        (item) => COLOR_BY_LABEL[item.label] ?? DashboardPalette.accent,
+        (item) => colorByLabel[item.label as keyof typeof colorByLabel] ?? colors.accent,
       ),
-    [chartData],
+    [chartData, colorByLabel, colors.accent],
   );
 
   if (chartData.length === 0) {
@@ -77,52 +82,51 @@ export function MonthlyMovementChart({
       <Text style={chartSectionStyles.description}>
         Como seu dinheiro se movimentou neste período.
       </Text>
-      <View style={[chartSectionStyles.chartWrapper, { height: chartHeight }]}>
-        <DonutChart
-          config={{
-            data: chartData,
-            colors: chartColors,
-            strokeWidth: DONUT_CHART_STYLE.strokeWidth,
-            gap: DONUT_CHART_STYLE.gap,
-            roundedCorners: DONUT_CHART_STYLE.roundedCorners,
-            animationDuration: DONUT_CHART_STYLE.animationDuration,
-            legend: {
-              enabled: true,
-              renderContent: (segments: ProcessedSegment[]) => (
-                <DonutChartLegend segments={segments} />
-              ),
-            },
-            hover: {
-              enabled: true,
-              animateOnHover: true,
-              hitSlop: DONUT_CHART_STYLE.hitSlop,
-            },
-            centerValues: {
-              enabled: true,
-              renderContent: (
-                _segments: ProcessedSegment[],
-                total: number,
-                hoveredSegment: ProcessedSegment | null,
-              ) => {
-                const { value, label, color } = hoveredSegment ?? {
-                  value: total,
-                  label: 'Total movimentado',
-                  color: DashboardPalette.textPrimary,
-                };
+      <DashboardDonutChart
+        height={chartHeight}
+        config={{
+          data: chartData,
+          colors: chartColors,
+          strokeWidth: DONUT_CHART_STYLE.strokeWidth,
+          gap: DONUT_CHART_STYLE.gap,
+          roundedCorners: DONUT_CHART_STYLE.roundedCorners,
+          animationDuration: DONUT_CHART_STYLE.animationDuration,
+          legend: {
+            enabled: true,
+            renderContent: (segments: ProcessedSegment[]) => (
+              <DonutChartLegend segments={segments} />
+            ),
+          },
+          hover: {
+            enabled: true,
+            animateOnHover: true,
+            hitSlop: DONUT_CHART_STYLE.hitSlop,
+          },
+          centerValues: {
+            enabled: true,
+            renderContent: (
+              _segments: ProcessedSegment[],
+              total: number,
+              hoveredSegment: ProcessedSegment | null,
+            ) => {
+              const { value, label, color } = hoveredSegment ?? {
+                value: total,
+                label: 'Total movimentado',
+                color: colors.text,
+              };
 
-                return (
-                  <ChartCenterContent
-                    value={value}
-                    label={label}
-                    accentColor={color}
-                    isTotal={!hoveredSegment}
-                  />
-                );
-              },
+              return (
+                <ChartCenterContent
+                  value={value}
+                  label={label}
+                  accentColor={color}
+                  isTotal={!hoveredSegment}
+                />
+              );
             },
-          }}
-        />
-      </View>
+          },
+        }}
+      />
     </View>
   );
 }

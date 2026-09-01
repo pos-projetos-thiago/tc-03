@@ -1,28 +1,29 @@
-import { useColorScheme } from 'react-native';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { SvgUri } from 'react-native-svg';
 
-import { ByteBankLogo } from './byte-bank-logo';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
-const BACKGROUND_LIGHT = '#FEFEFE';
-const BACKGROUND_DARK = '#121212';
+const LOGO_WIDTH = 200;
+const LOGO_HEIGHT = Math.round((LOGO_WIDTH * 395) / 373);
+const logoUri = Image.resolveAssetSource(require('@/assets/images/logo.svg')).uri;
 
 /**
  * Splash screen customizada do Byte Bank.
  *
  * Renderiza o logo SVG centralizado sobre um fundo que respeita
- * automaticamente o tema do sistema (light → #FEFEFE, dark → #121212).
+ * automaticamente o tema do sistema (light → #FEFEFE, dark → #1E1E1E).
  *
  * Uso: exibir condicionalmente no root layout enquanto os recursos
  * iniciais (fontes, sessão, etc.) ainda estão carregando.
  */
 export function AppSplashScreen() {
-  const colorScheme = useColorScheme();
-  const backgroundColor =
-    colorScheme === 'dark' ? BACKGROUND_DARK : BACKGROUND_LIGHT;
+  const colorScheme = useColorScheme() ?? 'light';
+  const backgroundColor = Colors[colorScheme].background;
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <ByteBankLogo width={200} height={225} />
+      <SvgUri uri={logoUri} width={LOGO_WIDTH} height={LOGO_HEIGHT} />
     </View>
   );
 }

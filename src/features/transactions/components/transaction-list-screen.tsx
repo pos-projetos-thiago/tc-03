@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,12 +8,11 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/src/features/auth';
 import { EmptyState } from '@/src/shared/components/empty-state';
 import { ErrorMessage } from '@/src/shared/components/error-message';
@@ -24,6 +23,7 @@ import { useDeleteTransaction } from '../hooks/use-delete-transaction';
 import { useTransactionContext } from '../hooks/use-transaction-context';
 import { DEFAULT_FILTER } from '../types/transaction-filter';
 import type { Transaction } from '../types/transaction';
+import { GlassIconButton } from './glass-icon-button';
 import { TransactionFilterBar } from './transaction-filter-bar';
 import { TransactionItem } from './transaction-item';
 
@@ -40,6 +40,8 @@ import { TransactionItem } from './transaction-item';
 export function TransactionListScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const isDark = colorScheme === 'dark';
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -62,7 +64,6 @@ export function TransactionListScreen() {
   const isFilterActive =
     filter.type !== null || filter.category !== null || filter.dateRange !== null;
 
-  // Controla se a tela já foi montada para evitar refresh duplo na abertura
   const hasMountedRef = useRef(false);
 
   useFocusEffect(
@@ -74,10 +75,6 @@ export function TransactionListScreen() {
       refresh();
     }, [refresh]),
   );
-
-  // -------------------------------------------------------------------------
-  // Handlers
-  // -------------------------------------------------------------------------
 
   function handleEdit(transaction: Transaction) {
     router.push({
@@ -136,10 +133,6 @@ export function TransactionListScreen() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Render helpers
-  // -------------------------------------------------------------------------
-
   function renderFooter() {
     if (!isLoadingMore) return null;
     return (
@@ -149,53 +142,40 @@ export function TransactionListScreen() {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Loading inicial (primeira carga sem filtro ativo)
-  // -------------------------------------------------------------------------
-
   if (isLoading && transactions.length === 0 && !isFilterActive) {
     return <LoadingSpinner fullScreen />;
   }
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
   return (
     <View style={styles.container}>
-      {/* Cabeçalho */}
-      <View style={[styles.header, { backgroundColor: colors.background, paddingTop: insets.top + 16 }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Transações</Text>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 16 },
+        ]}>
+        <Text style={styles.title} numberOfLines={1}>
+          Transações
+        </Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[
-              styles.filterToggle,
-              isFilterActive && { borderColor: colors.tint },
-            ]}
-            onPress={() => setShowFilters((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel={showFilters ? 'Fechar filtros' : 'Abrir filtros'}
-            accessibilityState={{ expanded: showFilters }}>
-            <Text
-              style={[
-                styles.filterToggleText,
-                { color: isFilterActive ? colors.tint : colors.icon },
-              ]}>
-              {isFilterActive ? '⊙ Filtros' : '⊙ Filtrar'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: colors.tint }]}
+          <GlassIconButton
+            icon="filter-outline"
+            onPress={() => setShowFilters((value) => !value)}
+            accessibilityLabel={showFilters ? 'Fechar filtros' : 'Filtrar'}
+            colors={colors}
+            isDark={isDark}
+            isActive={isFilterActive || showFilters}
+          />
+          <GlassIconButton
+            icon="add"
             onPress={() => router.push('/transactions/new')}
+            accessibilityLabel="Nova transação"
+            colors={colors}
+            isDark={isDark}
             disabled={isDeleting}
-            accessibilityRole="button"
-            accessibilityLabel="Nova transação">
-            <Text style={styles.addButtonText}>+ Nova</Text>
-          </TouchableOpacity>
+          />
         </View>
       </View>
 
-      {/* Painel de filtros (colapsável) */}
       {showFilters ? (
         <TransactionFilterBar
           filter={filter}
@@ -213,10 +193,12 @@ export function TransactionListScreen() {
         renderItem={({ item }) => (
           <TransactionItem
             transaction={item}
+            variant="card"
             onPress={handleEdit}
             onDelete={handleDeleteRequest}
           />
         )}
+        ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -238,68 +220,70 @@ export function TransactionListScreen() {
               description={
                 isFilterActive
                   ? 'Tente ajustar ou limpar os filtros.'
-                  : "Toque em '+ Nova' para adicionar sua primeira transação."
+                  : 'Toque no botão + para adicionar sua primeira transação.'
               }
             />
           ) : null
         }
+        style={styles.list}
         contentContainerStyle={
-          transactions.length === 0 ? styles.emptyContent : undefined
+          transactions.length === 0
+            ? styles.emptyContent
+            : styles.listContent
         }
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  filterToggle: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  filterToggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  addButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  emptyContent: {
-    flex: 1,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    list: {
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+      gap: 12,
+      backgroundColor: colors.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    title: {
+      flex: 1,
+      flexShrink: 1,
+      fontSize: 26,
+      fontWeight: '600',
+      color: colors.text,
+      letterSpacing: -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flexShrink: 0,
+    },
+    listContent: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 32,
+    },
+    itemSeparator: {
+      height: 10,
+    },
+    emptyContent: {
+      flex: 1,
+    },
+    footerLoader: {
+      paddingVertical: 20,
+      alignItems: 'center',
+    },
+  });
+}

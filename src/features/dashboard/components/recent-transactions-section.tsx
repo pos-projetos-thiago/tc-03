@@ -4,15 +4,48 @@ import { StyleSheet, Text, View } from 'react-native';
 import { TransactionItem } from '@/src/features/transactions';
 import type { Transaction } from '@/src/features/transactions';
 
-import { DashboardPalette } from './dashboard-palette';
+import type { ThemeColors } from './dashboard-palette';
+import { useDashboardColors } from './dashboard-palette';
 
 interface RecentTransactionsSectionProps {
   transactions: Transaction[];
 }
 
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    list: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 4,
+      backgroundColor: colors.surface,
+      overflow: 'hidden',
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.divider,
+      marginLeft: 16,
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      paddingVertical: 28,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 4,
+      backgroundColor: colors.surface,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+  });
+}
+
 export function RecentTransactionsSection({
   transactions,
 }: RecentTransactionsSectionProps) {
+  const colors = useDashboardColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const sorted = useMemo(
     () =>
       [...transactions].sort(
@@ -40,30 +73,3 @@ export function RecentTransactionsSection({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  list: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DashboardPalette.border,
-    borderRadius: 4,
-    backgroundColor: DashboardPalette.surface,
-    overflow: 'hidden',
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: DashboardPalette.divider,
-    marginLeft: 16,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 28,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DashboardPalette.border,
-    borderRadius: 4,
-    backgroundColor: DashboardPalette.surface,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: DashboardPalette.textMuted,
-  },
-});

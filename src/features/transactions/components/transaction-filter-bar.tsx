@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
 import type { TransactionType } from '../types/transaction';
@@ -67,6 +67,7 @@ interface TransactionFilterBarProps {
 export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFilterBarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const isDark = colorScheme === 'dark';
 
   const [localType, setLocalType] = useState<TransactionType | null>(filter.type);
   const [localCategory, setLocalCategory] = useState<string>(filter.category ?? '');
@@ -127,7 +128,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
   }
 
   const active = isFilterActive(filter);
-  const s = makeStyles(colors);
+  const s = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
 
   return (
     <View style={s.container}>
@@ -301,15 +302,15 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
 // Styles
 // ---------------------------------------------------------------------------
 
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.background,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: '#e5e7eb',
-      gap: 10,
+      borderBottomColor: colors.border,
+      gap: 12,
     },
     fieldWrapper: {
       gap: 4,
@@ -329,11 +330,11 @@ function makeStyles(colors: (typeof Colors)['light']) {
       flex: 1,
       height: 36,
       borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderColor: colors.border,
       borderRadius: 6,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     segmentSelected: {
       borderColor: colors.tint,
@@ -341,15 +342,15 @@ function makeStyles(colors: (typeof Colors)['light']) {
     },
     segmentIncome: {
       borderColor: '#16a34a',
-      backgroundColor: '#dcfce7',
+      backgroundColor: isDark ? 'rgba(22, 163, 74, 0.15)' : '#dcfce7',
     },
     segmentExpense: {
       borderColor: '#dc2626',
-      backgroundColor: '#fee2e2',
+      backgroundColor: isDark ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2',
     },
     segmentInvestment: {
       borderColor: '#2563eb',
-      backgroundColor: '#eff6ff',
+      backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
     },
     segmentText: {
       fontSize: 13,
@@ -371,12 +372,12 @@ function makeStyles(colors: (typeof Colors)['light']) {
       paddingVertical: 8,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: '#d1d5db',
-      backgroundColor: colors.background,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
     chipSelected: {
       borderColor: '#2563eb',
-      backgroundColor: '#eff6ff',
+      backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
     },
     chipText: {
       fontSize: 13,
@@ -384,19 +385,19 @@ function makeStyles(colors: (typeof Colors)['light']) {
       color: colors.icon,
     },
     chipTextSelected: {
-      color: '#1d4ed8',
+      color: isDark ? '#93c5fd' : '#1d4ed8',
       fontWeight: '700',
     },
     // TextInput categoria livre
     input: {
       height: 40,
       borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderColor: colors.border,
       borderRadius: 8,
       paddingHorizontal: 10,
       fontSize: 14,
       color: colors.text,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     // Campos de data
     dateRow: {
@@ -407,12 +408,12 @@ function makeStyles(colors: (typeof Colors)['light']) {
       flex: 1,
       height: 40,
       borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderColor: colors.border,
       borderRadius: 8,
       paddingHorizontal: 10,
       fontSize: 14,
       color: colors.text,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     inputError: {
       borderColor: '#ef4444',

@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   ScrollView,
@@ -14,7 +14,8 @@ import { ErrorMessage } from '@/src/shared/components/error-message';
 import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 import { useDashboard } from '../hooks/use-dashboard';
 import { DashboardHeader } from './dashboard-header';
-import { DashboardPalette } from './dashboard-palette';
+import type { ThemeColors } from './dashboard-palette';
+import { useDashboardColors } from './dashboard-palette';
 import { FinancialOverview } from './financial-overview';
 import { InvestmentPortfolioChart } from './investment-portfolio-chart';
 import { MonthlyMovementChart } from './monthly-movement-chart';
@@ -32,12 +33,55 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    animatedContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 20,
+      gap: 32,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 24,
+      gap: 12,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.textMuted,
+      marginTop: 8,
+    },
+    emptyText: {
+      fontSize: 15,
+      color: colors.textMuted,
+    },
+    section: {
+      gap: 16,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      letterSpacing: 0.3,
+    },
+  });
+}
+
 interface SectionProps {
   title?: string;
   children: React.ReactNode;
+  styles: ReturnType<typeof createStyles>;
 }
 
-function Section({ title, children }: SectionProps) {
+function Section({ title, children, styles }: SectionProps) {
   return (
     <View style={styles.section}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
@@ -47,6 +91,8 @@ function Section({ title, children }: SectionProps) {
 }
 
 export function DashboardScreen() {
+  const colors = useDashboardColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { summary, isLoading, error, refresh } = useDashboard(user?.id ?? null);
   const insets = useSafeAreaInsets();
@@ -134,7 +180,7 @@ export function DashboardScreen() {
       >
         <DashboardHeader userName={user?.displayName} monthLabel={monthLabel} />
 
-        <Section>
+        <Section styles={styles}>
           <FinancialOverview
             balance={summary.balance}
             netWorth={summary.netWorth}
@@ -143,7 +189,7 @@ export function DashboardScreen() {
           />
         </Section>
 
-        <Section title="Movimentação do mês">
+        <Section title="Movimentação do mês" styles={styles}>
           <MonthlyMovementChart
             totalIncome={summary.totalIncome}
             totalExpense={summary.totalExpense}
@@ -151,54 +197,14 @@ export function DashboardScreen() {
           />
         </Section>
 
-        <Section title="Carteira de investimentos">
+        <Section title="Carteira de investimentos" styles={styles}>
           <InvestmentPortfolioChart data={summary.investmentsByCategory} />
         </Section>
 
-        <Section title="Atividade recente">
+        <Section title="Atividade recente" styles={styles}>
           <RecentTransactionsSection transactions={allRecent} />
         </Section>
       </ScrollView>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  animatedContainer: {
-    flex: 1,
-    backgroundColor: DashboardPalette.background,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    gap: 32,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: DashboardPalette.background,
-    padding: 24,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: DashboardPalette.textMuted,
-    marginTop: 8,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: DashboardPalette.textMuted,
-  },
-  section: {
-    gap: 16,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: DashboardPalette.textSecondary,
-    letterSpacing: 0.3,
-  },
-});

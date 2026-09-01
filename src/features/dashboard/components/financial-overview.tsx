@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatCurrency } from '@/src/shared/utils/format-currency';
 
-import { DashboardPalette } from './dashboard-palette';
+import type { ThemeColors } from './dashboard-palette';
+import { useDashboardColors } from './dashboard-palette';
 
 interface FinancialOverviewProps {
   balance: number;
@@ -17,11 +18,13 @@ interface MetricProps {
   value: number;
   caption: string;
   valueColor?: string;
+  styles: ReturnType<typeof createStyles>;
+  colors: ThemeColors;
 }
 
-function Metric({ label, value, caption, valueColor }: MetricProps) {
+function Metric({ label, value, caption, valueColor, styles, colors }: MetricProps) {
   const resolvedColor =
-    valueColor ?? (value < 0 ? DashboardPalette.negative : DashboardPalette.textPrimary);
+    valueColor ?? (value < 0 ? colors.negative : colors.text);
 
   return (
     <View style={styles.metric}>
@@ -34,12 +37,79 @@ function Metric({ label, value, caption, valueColor }: MetricProps) {
   );
 }
 
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 4,
+      paddingHorizontal: 20,
+      paddingVertical: 20,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    metric: {
+      flex: 1,
+      gap: 6,
+    },
+    metricLabel: {
+      fontSize: 12,
+      color: colors.textMuted,
+      letterSpacing: 0.3,
+    },
+    metricValue: {
+      fontSize: 20,
+      fontWeight: '600',
+      letterSpacing: -0.2,
+    },
+    metricCaption: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    verticalDivider: {
+      width: StyleSheet.hairlineWidth,
+      alignSelf: 'stretch',
+      backgroundColor: colors.divider,
+      marginHorizontal: 20,
+    },
+    horizontalDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.divider,
+      marginVertical: 20,
+    },
+    investedRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 16,
+    },
+    investedCaption: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 4,
+      textTransform: 'capitalize',
+    },
+    investedValue: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.accent,
+      letterSpacing: -0.2,
+    },
+  });
+}
+
 export function FinancialOverview({
   balance,
   netWorth,
   totalInvested,
   monthLabel,
 }: FinancialOverviewProps) {
+  const colors = useDashboardColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.row}>
@@ -47,12 +117,16 @@ export function FinancialOverview({
           label="Saldo disponível"
           value={balance}
           caption="Histórico completo"
+          styles={styles}
+          colors={colors}
         />
         <View style={styles.verticalDivider} />
         <Metric
           label="Patrimônio total"
           value={netWorth}
           caption="Histórico completo"
+          styles={styles}
+          colors={colors}
         />
       </View>
 
@@ -68,65 +142,3 @@ export function FinancialOverview({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: DashboardPalette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DashboardPalette.border,
-    borderRadius: 4,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  metric: {
-    flex: 1,
-    gap: 6,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: DashboardPalette.textMuted,
-    letterSpacing: 0.3,
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-  },
-  metricCaption: {
-    fontSize: 11,
-    color: DashboardPalette.textMuted,
-  },
-  verticalDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-    backgroundColor: DashboardPalette.divider,
-    marginHorizontal: 20,
-  },
-  horizontalDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: DashboardPalette.divider,
-    marginVertical: 20,
-  },
-  investedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 16,
-  },
-  investedCaption: {
-    fontSize: 11,
-    color: DashboardPalette.textMuted,
-    marginTop: 4,
-    textTransform: 'capitalize',
-  },
-  investedValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: DashboardPalette.accent,
-    letterSpacing: -0.2,
-  },
-});

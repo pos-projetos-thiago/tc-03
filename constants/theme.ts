@@ -5,27 +5,53 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const brandPrimary = '#00BA7D';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
+    text: '#1E1E1E',
+    background: '#FEFEFE',
+    tint: brandPrimary,
     icon: '#687076',
     tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconSelected: brandPrimary,
+    surface: '#FFFFFF',
+    textSecondary: '#52525B',
+    textMuted: '#A1A1AA',
+    border: '#E4E4E7',
+    divider: '#F4F4F5',
+    accent: brandPrimary,
+    income: brandPrimary,
+    expense: '#A855F7',
+    investment: '#6366F1',
+    category: '#EC4899',
+    positive: brandPrimary,
+    negative: '#A855F7',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
+    text: '#FEFEFE',
+    background: '#1E1E1E',
+    tint: brandPrimary,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconSelected: brandPrimary,
+    surface: '#262626',
+    textSecondary: '#A1A1AA',
+    textMuted: '#71717A',
+    border: '#3F3F46',
+    divider: '#333333',
+    accent: brandPrimary,
+    income: brandPrimary,
+    expense: '#A855F7',
+    investment: '#6366F1',
+    category: '#EC4899',
+    positive: brandPrimary,
+    negative: '#A855F7',
   },
-};
+} as const;
+
+export type ThemeColorScheme = keyof typeof Colors;
+export type ThemeColors = (typeof Colors)[ThemeColorScheme];
 
 export const Fonts = Platform.select({
   ios: {

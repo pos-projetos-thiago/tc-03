@@ -1,4 +1,3 @@
-import { DonutChart } from 'expo-skia-charts';
 import type { ProcessedSegment } from 'expo-skia-charts';
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
@@ -6,35 +5,40 @@ import { Text, View } from 'react-native';
 import { INVESTMENT_CATEGORIES } from '@/src/features/transactions/types/transaction-investment-categories';
 
 import type { CategoryBreakdown } from '../types/dashboard-summary';
-import { DashboardPalette } from './dashboard-palette';
+import { useDashboardColors } from './dashboard-palette';
 import {
   ChartCenterContent,
+  DashboardDonutChart,
   DONUT_CHART_STYLE,
   DonutChartLegend,
-  chartSectionStyles,
+  useChartSectionStyles,
   useDonutChartHeight,
 } from './donut-chart-ui';
-
-const PORTFOLIO_COLORS = [
-  DashboardPalette.income,
-  DashboardPalette.expense,
-  DashboardPalette.investment,
-  DashboardPalette.category,
-] as const;
-
-const COLOR_BY_CATEGORY = Object.fromEntries(
-  INVESTMENT_CATEGORIES.map((category, index) => [
-    category,
-    PORTFOLIO_COLORS[index] ?? DashboardPalette.accent,
-  ]),
-) as Record<string, string>;
 
 interface InvestmentPortfolioChartProps {
   data: CategoryBreakdown[];
 }
 
 export function InvestmentPortfolioChart({ data }: InvestmentPortfolioChartProps) {
+  const colors = useDashboardColors();
+  const chartSectionStyles = useChartSectionStyles();
   const chartHeight = useDonutChartHeight('secondary');
+
+  const portfolioColors = useMemo(
+    () => [colors.income, colors.expense, colors.investment, colors.category] as const,
+    [colors],
+  );
+
+  const colorByCategory = useMemo(
+    () =>
+      Object.fromEntries(
+        INVESTMENT_CATEGORIES.map((category, index) => [
+          category,
+          portfolioColors[index] ?? colors.accent,
+        ]),
+      ) as Record<string, string>,
+    [colors.accent, portfolioColors],
+  );
 
   const chartData = useMemo(
     () =>
@@ -50,9 +54,9 @@ export function InvestmentPortfolioChart({ data }: InvestmentPortfolioChartProps
   const chartColors = useMemo(
     () =>
       chartData.map(
-        (item) => COLOR_BY_CATEGORY[item.label] ?? DashboardPalette.accent,
+        (item) => colorByCategory[item.label] ?? colors.accent,
       ),
-    [chartData],
+    [chartData, colorByCategory, colors.accent],
   );
 
   if (chartData.length === 0) {
@@ -78,52 +82,51 @@ export function InvestmentPortfolioChart({ data }: InvestmentPortfolioChartProps
       <Text style={chartSectionStyles.description}>
         Como seus investimentos estão distribuídos entre os tipos da carteira.
       </Text>
-      <View style={[chartSectionStyles.chartWrapper, { height: chartHeight }]}>
-        <DonutChart
-          config={{
-            data: chartData,
-            colors: chartColors,
-            strokeWidth: DONUT_CHART_STYLE.strokeWidth,
-            gap: DONUT_CHART_STYLE.gap,
-            roundedCorners: DONUT_CHART_STYLE.roundedCorners,
-            animationDuration: DONUT_CHART_STYLE.animationDuration,
-            legend: {
-              enabled: true,
-              renderContent: (segments: ProcessedSegment[]) => (
-                <DonutChartLegend segments={segments} />
-              ),
-            },
-            hover: {
-              enabled: true,
-              animateOnHover: true,
-              hitSlop: DONUT_CHART_STYLE.hitSlop,
-            },
-            centerValues: {
-              enabled: true,
-              renderContent: (
-                _segments: ProcessedSegment[],
-                total: number,
-                hoveredSegment: ProcessedSegment | null,
-              ) => {
-                const { value, label, color } = hoveredSegment ?? {
-                  value: total,
-                  label: 'Investimentos',
-                  color: DashboardPalette.textPrimary,
-                };
+      <DashboardDonutChart
+        height={chartHeight}
+        config={{
+          data: chartData,
+          colors: chartColors,
+          strokeWidth: DONUT_CHART_STYLE.strokeWidth,
+          gap: DONUT_CHART_STYLE.gap,
+          roundedCorners: DONUT_CHART_STYLE.roundedCorners,
+          animationDuration: DONUT_CHART_STYLE.animationDuration,
+          legend: {
+            enabled: true,
+            renderContent: (segments: ProcessedSegment[]) => (
+              <DonutChartLegend segments={segments} />
+            ),
+          },
+          hover: {
+            enabled: true,
+            animateOnHover: true,
+            hitSlop: DONUT_CHART_STYLE.hitSlop,
+          },
+          centerValues: {
+            enabled: true,
+            renderContent: (
+              _segments: ProcessedSegment[],
+              total: number,
+              hoveredSegment: ProcessedSegment | null,
+            ) => {
+              const { value, label, color } = hoveredSegment ?? {
+                value: total,
+                label: 'Investimentos',
+                color: colors.text,
+              };
 
-                return (
-                  <ChartCenterContent
-                    value={value}
-                    label={label}
-                    accentColor={color}
-                    isTotal={!hoveredSegment}
-                  />
-                );
-              },
+              return (
+                <ChartCenterContent
+                  value={value}
+                  label={label}
+                  accentColor={color}
+                  isTotal={!hoveredSegment}
+                />
+              );
             },
-          }}
-        />
-      </View>
+          },
+        }}
+      />
     </View>
   );
 }
