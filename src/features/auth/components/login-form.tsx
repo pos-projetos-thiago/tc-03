@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { isFirebaseConfigured } from '@/src/lib/firebase/config';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validateEmail, validatePassword } from '@/src/shared/utils/validators';
@@ -217,7 +217,7 @@ export function LoginForm() {
 // Styles
 // ---------------------------------------------------------------------------
 
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     flex: {
       flex: 1,

@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validateEmail } from '@/src/shared/utils/validators';
 import { useAuth } from '../hooks/use-auth';
@@ -144,7 +144,7 @@ export function ForgotPasswordForm() {
   );
 }
 
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     flex: {
       flex: 1,

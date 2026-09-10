@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/src/features/auth';
 import { AttachmentPicker } from '@/src/features/receipts/components/attachment-picker';
 import { useTransactionExtraction } from '@/src/features/receipts/hooks/use-transaction-extraction';
@@ -586,7 +586,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
 // Styles
 // ---------------------------------------------------------------------------
 
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     flex: {
       flex: 1,
