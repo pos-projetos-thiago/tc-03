@@ -3,7 +3,7 @@
 // antes de qualquer inicialização do Firebase AI Logic.
 import '@/src/polyfills/abort-signal-any';
 
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validateEmail, validateName, validatePassword } from '@/src/shared/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
@@ -305,7 +305,7 @@ export function RegisterForm() {
 // Styles
 // ---------------------------------------------------------------------------
 
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     flex: {
       flex: 1,
