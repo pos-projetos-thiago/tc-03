@@ -178,7 +178,7 @@ export function DashboardScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <DashboardHeader userName={user?.displayName} monthLabel={monthLabel} />
+        <DashboardHeader userId={user?.id} userName={user?.displayName} monthLabel={monthLabel} />
 
         <Section styles={styles}>
           <FinancialOverview

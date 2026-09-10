@@ -23,6 +23,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'chart.bar.fill': 'bar-chart',
   'list.bullet': 'list',
+  'rectangle.portrait.and.arrow.right': 'logout',
 } as IconMapping;
 
 /**
