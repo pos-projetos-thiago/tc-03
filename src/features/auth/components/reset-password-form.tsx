@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import { validatePassword } from '@/src/shared/utils/validators';
@@ -386,7 +386,7 @@ export function ResetPasswordForm() {
   );
 }
 
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     flex: {
       flex: 1,
