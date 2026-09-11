@@ -97,7 +97,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      await authService.signUp(email, password, name);
+      const user = await authService.signUp(email, password, name);
+      // onAuthStateChanged dispara antes do updateProfile completar, então
+      // o displayName chega null pelo listener. Corrige com o retorno do
+      // signUp, que já contém o nome após updateProfile + reload.
+      dispatch({ type: 'SET_USER', payload: user });
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: mapFirebaseError(err) });
     }

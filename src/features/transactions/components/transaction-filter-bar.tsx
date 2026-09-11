@@ -41,6 +41,169 @@ function isFilterActive(filter: TransactionFilter): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Category options
+// ---------------------------------------------------------------------------
+
+const EXPENSE_CATEGORIES = [
+  'Alimentação',
+  'Transporte',
+  'Moradia',
+  'Lazer',
+  'Saúde',
+  'Outros',
+] as const;
+
+// ---------------------------------------------------------------------------
+// DropdownSelect — estilos estáticos fora do componente (React Compiler safe)
+// ---------------------------------------------------------------------------
+
+const dropdownStyles = StyleSheet.create({
+  trigger: {
+    height: 40,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+  },
+  triggerText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  arrow: {
+    fontSize: 10,
+    marginLeft: 6,
+  },
+  list: {
+    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    overflow: 'hidden',
+  },
+  option: {
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  optionBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  optionText: {
+    fontSize: 14,
+  },
+  checkmark: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+});
+
+interface DropdownSelectProps {
+  options: readonly string[];
+  value: string;
+  placeholder: string;
+  open: boolean;
+  colors: ThemeColors;
+  surface: string;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}
+
+function DropdownSelect({
+  options,
+  value,
+  placeholder,
+  open,
+  colors,
+  surface,
+  onToggle,
+  onChange,
+}: DropdownSelectProps) {
+  return (
+    <View>
+      {/* Trigger */}
+      <Pressable
+        onPress={onToggle}
+        style={[
+          dropdownStyles.trigger,
+          {
+            borderColor: colors.border,
+            borderTopLeftRadius: 8,
+            borderTopRightRadius: 8,
+            borderBottomLeftRadius: open ? 0 : 8,
+            borderBottomRightRadius: open ? 0 : 8,
+            borderBottomWidth: open ? 0 : 1,
+            backgroundColor: surface,
+          },
+        ]}
+        accessibilityRole="combobox"
+        accessibilityLabel={value || placeholder}
+        accessibilityState={{ expanded: open }}>
+        <Text
+          style={[dropdownStyles.triggerText, { color: value ? colors.text : colors.icon }]}
+          numberOfLines={1}>
+          {value || placeholder}
+        </Text>
+        <Text style={[dropdownStyles.arrow, { color: colors.icon }]}>
+          {open ? '▲' : '▼'}
+        </Text>
+      </Pressable>
+
+      {/* Lista */}
+      {open ? (
+        <View
+          style={[
+            dropdownStyles.list,
+            {
+              borderColor: colors.border,
+              borderTopColor: colors.divider,
+              backgroundColor: surface,
+            },
+          ]}>
+          {options.map((option, index) => {
+            const isSelected = value === option;
+            const isLast = index === options.length - 1;
+            return (
+              <Pressable
+                key={option}
+                onPress={() => onChange(option)}
+                style={[
+                  dropdownStyles.option,
+                  !isLast && [
+                    dropdownStyles.optionBorder,
+                    { borderBottomColor: colors.divider },
+                  ],
+                  { backgroundColor: isSelected ? colors.tint + '18' : surface },
+                ]}
+                accessibilityRole="menuitem"
+                accessibilityLabel={option}
+                accessibilityState={{ selected: isSelected }}>
+                <Text
+                  style={[
+                    dropdownStyles.optionText,
+                    {
+                      color: isSelected ? colors.tint : colors.text,
+                      fontWeight: isSelected ? '600' : '400',
+                    },
+                  ]}>
+                  {option}
+                </Text>
+                {isSelected ? (
+                  <Text style={[dropdownStyles.checkmark, { color: colors.tint }]}>✓</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -61,7 +224,7 @@ interface TransactionFilterBarProps {
  *   - type: segmented control (Todos / Receita / Despesa / Investimento)
  *   - category:
  *       - quando type === 'investment': chips de seleção usando INVESTMENT_CATEGORIES
- *       - nos demais casos: TextInput livre (comparação exata no Firestore)
+ *       - nos demais casos: dropdown colapsável com opções por tipo
  *   - dateRange: dois campos DD/MM/AAAA com validação
  */
 export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFilterBarProps) {
@@ -78,15 +241,20 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
     filter.dateRange ? dateToInput(filter.dateRange.end) : '',
   );
   const [dateError, setDateError] = useState<string | null>(null);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
-  // Quando o tipo muda para/de 'investment', limpa a categoria
-  // para evitar enviar uma categoria inválida para o outro modo.
+  // Quando o tipo muda, limpa a categoria e fecha o dropdown
   function handleTypeChange(type: TransactionType | null) {
     if (type !== localType) {
       setLocalCategory('');
+      setCategoryDropdownOpen(false);
     }
     setLocalType(type);
   }
+
+  // Opções do dropdown — sempre as categorias de despesa/gasto,
+  // que cobrem os casos de uso do filtro para income, expense e "Todos".
+  const categoryOptions: readonly string[] = EXPENSE_CATEGORIES;
 
   function handleApply() {
     setDateError(null);
@@ -124,11 +292,15 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
     setLocalDateStart('');
     setLocalDateEnd('');
     setDateError(null);
+    setCategoryDropdownOpen(false);
     onClear();
   }
 
   const active = isFilterActive(filter);
   const s = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
+
+  // surface do tema para o dropdown (igual ao input do filtro)
+  const surface = colors.surface;
 
   return (
     <View style={s.container}>
@@ -194,7 +366,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
         <Text style={s.label}>Categoria</Text>
 
         {localType === 'investment' ? (
-          /* Chips de seleção para investimentos */
+          /* Chips horizontais para investimento — comportamento original */
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -218,16 +390,20 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
             })}
           </ScrollView>
         ) : (
-          /* TextInput livre para income/expense/todos */
-          <TextInput
-            style={s.input}
+          /* Dropdown colapsável para income, expense e "Todos" */
+          <DropdownSelect
+            options={categoryOptions}
             value={localCategory}
-            onChangeText={setLocalCategory}
-            placeholder="Filtrar por categoria exata"
-            placeholderTextColor={colors.icon}
-            autoCapitalize="sentences"
-            returnKeyType="done"
-            accessibilityLabel="Filtro por categoria"
+            placeholder="Filtrar por categoria"
+            open={categoryDropdownOpen}
+            colors={colors}
+            surface={surface}
+            onToggle={() => setCategoryDropdownOpen((prev) => !prev)}
+            onChange={(val) => {
+              // Toque na opção já selecionada desfaz a seleção
+              setLocalCategory(localCategory === val ? '' : val);
+              setCategoryDropdownOpen(false);
+            }}
           />
         )}
       </View>
@@ -353,7 +529,7 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
       backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
     },
     segmentText: {
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: '500',
       color: colors.icon,
     },
@@ -387,17 +563,6 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
     chipTextSelected: {
       color: isDark ? '#93c5fd' : '#1d4ed8',
       fontWeight: '700',
-    },
-    // TextInput categoria livre
-    input: {
-      height: 40,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      fontSize: 14,
-      color: colors.text,
-      backgroundColor: colors.surface,
     },
     // Campos de data
     dateRow: {

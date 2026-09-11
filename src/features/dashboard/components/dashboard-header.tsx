@@ -14,11 +14,12 @@ interface DashboardHeaderProps {
   monthLabel: string;
 }
 
-function resolveGreetingName(userName?: string | null): string {
+function resolveFirstName(userName?: string | null): string {
   const trimmed = userName?.trim();
-  if (!trimmed) return 'Olá';
-  const firstName = trimmed.split(/\s+/)[0];
-  return `Olá, ${firstName}!`;
+
+  if (!trimmed) return 'Usuário';
+
+  return trimmed.split(/\s+/)[0];
 }
 
 function createStyles(colors: ThemeColors) {
@@ -27,7 +28,6 @@ function createStyles(colors: ThemeColors) {
       gap: 6,
       paddingBottom: 8,
     },
-    // Row: avatar + greeting text side by side
     greetingRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -65,6 +65,8 @@ export function DashboardHeader({ userId, userName, monthLabel }: DashboardHeade
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { signOut } = useAuth();
 
+  const firstName = resolveFirstName(userName);
+
   const handleLogout = useCallback(() => {
     Alert.alert('Sair', 'Deseja encerrar a sessão?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -75,12 +77,11 @@ export function DashboardHeader({ userId, userName, monthLabel }: DashboardHeade
   return (
     <View style={styles.container}>
       <View style={styles.greetingRow}>
-        {/* Avatar — shown only when userId is available */}
         {userId ? <UserAvatar userId={userId} size={52} /> : null}
 
         <View style={styles.greetingTextBlock}>
-          <Text style={styles.greeting}>{resolveGreetingName(userName)}</Text>
-          <Text style={styles.title}>Resumo financeiro</Text>
+          <Text style={styles.greeting}>Olá,</Text>
+          <Text style={styles.title}>{firstName}!</Text>
         </View>
 
         <TouchableOpacity

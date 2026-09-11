@@ -27,6 +27,21 @@ import type { Transaction, TransactionType } from '../types/transaction';
 import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 
 // ---------------------------------------------------------------------------
+// Category options per type
+// ---------------------------------------------------------------------------
+
+const INCOME_CATEGORIES = ['Salário', 'Freelance', 'Venda', 'Outros'] as const;
+
+const EXPENSE_CATEGORIES = [
+  'Alimentação',
+  'Transporte',
+  'Moradia',
+  'Lazer',
+  'Saúde',
+  'Outros',
+] as const;
+
+// ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
 
@@ -99,6 +114,161 @@ interface TransactionFormProps {
 }
 
 // ---------------------------------------------------------------------------
+// DropdownSelect — dropdown colapsável, estado controlado pelo pai
+// ---------------------------------------------------------------------------
+
+interface DropdownSelectProps {
+  options: readonly string[];
+  value: string;
+  placeholder: string;
+  open: boolean;
+  hasError: boolean;
+  disabled: boolean;
+  colors: ThemeColors;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}
+
+// Estilos estáticos do DropdownSelect — fora do componente para evitar
+// recriação a cada render e incompatibilidade com o React Compiler.
+const dropdownStyles = StyleSheet.create({
+  trigger: {
+    height: 48,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  triggerText: {
+    flex: 1,
+    fontSize: 15,
+  },
+  arrow: {
+    fontSize: 11,
+    marginLeft: 8,
+  },
+  list: {
+    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    overflow: 'hidden',
+  },
+  option: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  optionBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  optionTextBase: {
+    fontSize: 15,
+  },
+  checkmark: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+});
+
+function DropdownSelect({
+  options,
+  value,
+  placeholder,
+  open,
+  hasError,
+  disabled,
+  colors,
+  onToggle,
+  onChange,
+}: DropdownSelectProps) {
+  const borderColor = hasError ? '#ef4444' : colors.border;
+
+  return (
+    <View>
+      {/* ── Trigger ── */}
+      <Pressable
+        onPress={() => { if (!disabled) onToggle(); }}
+        style={[
+          dropdownStyles.trigger,
+          {
+            borderColor,
+            borderTopLeftRadius: 8,
+            borderTopRightRadius: 8,
+            borderBottomLeftRadius: open ? 0 : 8,
+            borderBottomRightRadius: open ? 0 : 8,
+            borderBottomWidth: open ? 0 : 1,
+            backgroundColor: colors.background,
+          },
+        ]}
+        accessibilityRole="combobox"
+        accessibilityLabel={value || placeholder}
+        accessibilityState={{ expanded: open, disabled }}>
+        <Text
+          style={[
+            dropdownStyles.triggerText,
+            { color: value ? colors.text : colors.icon },
+          ]}
+          numberOfLines={1}>
+          {value || placeholder}
+        </Text>
+        <Text style={[dropdownStyles.arrow, { color: colors.icon }]}>
+          {open ? '▲' : '▼'}
+        </Text>
+      </Pressable>
+
+      {/* ── Lista — só existe no DOM quando open=true ── */}
+      {open ? (
+        <View
+          style={[
+            dropdownStyles.list,
+            {
+              borderColor,
+              borderTopColor: colors.divider,
+              backgroundColor: colors.background,
+            },
+          ]}>
+          {options.map((option, index) => {
+            const isSelected = value === option;
+            const isLast = index === options.length - 1;
+            return (
+              <Pressable
+                key={option}
+                onPress={() => onChange(option)}
+                style={[
+                  dropdownStyles.option,
+                  !isLast && [dropdownStyles.optionBorder, { borderBottomColor: colors.divider }],
+                  { backgroundColor: isSelected ? colors.tint + '18' : colors.background },
+                ]}
+                accessibilityRole="menuitem"
+                accessibilityLabel={option}
+                accessibilityState={{ selected: isSelected }}>
+                <Text
+                  style={[
+                    dropdownStyles.optionTextBase,
+                    {
+                      color: isSelected ? colors.tint : colors.text,
+                      fontWeight: isSelected ? '600' : '400',
+                    },
+                  ]}>
+                  {option}
+                </Text>
+                {isSelected ? (
+                  <Text style={[dropdownStyles.checkmark, { color: colors.tint }]}>✓</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -129,25 +299,23 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   const clearError = isEditing ? clearEditError : clearCreateError;
 
   // -------------------------------------------------------------------------
-  // Field state — inicializado com initialData quando em modo edição
+  // Field state
   // -------------------------------------------------------------------------
 
   const [type, setType] = useState<TransactionType>(initialData?.type ?? 'expense');
   const [amount, setAmount] = useState<string>(
     initialData ? String(initialData.amount) : '',
   );
-  // Investimento: categoria começa na primeira opção da lista se não vier de initialData
-  const [category, setCategory] = useState<string>(
-    initialData?.category ?? '',
-  );
+  const [category, setCategory] = useState<string>(initialData?.category ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [date, setDate] = useState<string>(
     initialData ? isoToDateInput(initialData.date) : todayAsInput(),
   );
 
-  // URI local selecionada pelo picker (ainda não enviada)
-  const [selectedAttachment, setSelectedAttachment] = useState<SelectedAttachment | null>(null);
+  // Estado do dropdown — controlado aqui para poder fechar ao trocar o tipo
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
+  const [selectedAttachment, setSelectedAttachment] = useState<SelectedAttachment | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(EMPTY_ERRORS);
   const [submitted, setSubmitted] = useState(false);
 
@@ -158,13 +326,10 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   async function handleAnalyzeWithAI() {
     if (!selectedAttachment) return;
     const result = await analyze(selectedAttachment);
-    if (!result) return; // erro já está em extractionError
+    if (!result) return;
 
-    // Preenche somente campos vazios — preserva o que o usuário já digitou
     if (result.type !== null && type === 'expense') {
-      // 'expense' é o default inicial; se o usuário não tocou no tipo, aplica a sugestão
       setType(result.type);
-      // Para investment, pré-seleciona a primeira categoria
       if (result.type === 'investment' && !category) {
         setCategory(INVESTMENT_CATEGORIES[0]);
       }
@@ -179,7 +344,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
       setDescription(result.description);
     }
     if (result.date !== null && date === todayAsInput()) {
-      // Preenche a data somente se ainda estiver com o valor padrão de hoje
       try {
         const d = new Date(result.date);
         if (!isNaN(d.getTime())) {
@@ -212,6 +376,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
 
   function handleCategoryChange(value: string) {
     setCategory(value);
+    setCategoryDropdownOpen(false);
     if (submitted) {
       setFieldErrors((prev) => ({ ...prev, category: validateCategory(value) }));
     }
@@ -256,21 +421,12 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
 
     const isoDate = parseDateInput(date)!;
 
-    // ------------------------------------------------------------------
-    // Upload do anexo (opcional) — ocorre antes de salvar a transação.
-    // Se falhar, o submit é interrompido.
-    // ------------------------------------------------------------------
     let resolvedReceiptUrl: string | null = initialData?.receiptUrl ?? null;
 
     if (selectedAttachment) {
-      // Para criação usamos um ID temporário baseado em timestamp;
-      // para edição usamos o ID real da transação.
       const tempId = isEditing && initialData ? initialData.id : `tmp_${Date.now()}`;
       const uploadedUrl = await upload(user.id, tempId, selectedAttachment);
-      if (uploadedUrl === null) {
-        // uploadError já está setado pelo hook — não prosseguir
-        return;
-      }
+      if (uploadedUrl === null) return;
       resolvedReceiptUrl = uploadedUrl;
     }
 
@@ -335,6 +491,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               onPress={() => {
                 setType('income');
                 setCategory('');
+                setCategoryDropdownOpen(false);
                 if (error) clearError();
               }}
               disabled={isSubmitting}
@@ -350,6 +507,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               onPress={() => {
                 setType('expense');
                 setCategory('');
+                setCategoryDropdownOpen(false);
                 if (error) clearError();
               }}
               disabled={isSubmitting}
@@ -364,8 +522,8 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               style={[s.segment, type === 'investment' && s.segmentActiveInvestment]}
               onPress={() => {
                 setType('investment');
-                // Pré-seleciona a primeira categoria de investimento
                 setCategory(INVESTMENT_CATEGORIES[0]);
+                setCategoryDropdownOpen(false);
                 if (error) clearError();
               }}
               disabled={isSubmitting}
@@ -398,12 +556,14 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Categoria — picker fixo para investimento, texto livre para demais */}
+        {/* Categoria */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>
             {type === 'investment' ? 'Tipo de investimento' : 'Categoria'}
           </Text>
+
           {type === 'investment' ? (
+            /* ── Picker fixo para investimento — comportamento original ── */
             <View style={[s.pickerWrapper, fieldErrors.category ? s.inputError : null]}>
               {INVESTMENT_CATEGORIES.map((cat) => (
                 <Pressable
@@ -434,18 +594,20 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               ))}
             </View>
           ) : (
-            <TextInput
-              style={[s.input, fieldErrors.category ? s.inputError : null]}
+            /* ── Dropdown colapsável para income e expense ── */
+            <DropdownSelect
+              options={type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES}
               value={category}
-              onChangeText={handleCategoryChange}
-              placeholder={type === 'income' ? 'Ex: Salário, Freelance…' : 'Ex: Alimentação, Transporte…'}
-              placeholderTextColor={colors.icon}
-              autoCapitalize="sentences"
-              returnKeyType="next"
-              accessibilityLabel="Campo de categoria"
-              editable={!isSubmitting}
+              placeholder="Selecione uma categoria"
+              open={categoryDropdownOpen}
+              hasError={Boolean(fieldErrors.category)}
+              disabled={isSubmitting}
+              colors={colors}
+              onToggle={() => setCategoryDropdownOpen((prev) => !prev)}
+              onChange={handleCategoryChange}
             />
           )}
+
           {fieldErrors.category ? (
             <Text style={s.fieldError} accessibilityRole="alert">{fieldErrors.category}</Text>
           ) : null}
@@ -470,27 +632,29 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Data */}
-        <View style={s.fieldWrapper}>
-          <Text style={s.label}>Data</Text>
-          <TextInput
-            style={[s.input, fieldErrors.date ? s.inputError : null]}
-            value={date}
-            onChangeText={handleDateChange}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor={colors.icon}
-            keyboardType="numeric"
-            maxLength={10}
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit}
-            accessibilityLabel="Campo de data"
-            accessibilityHint="Use o formato DD/MM/AAAA"
-            editable={!isSubmitting}
-          />
-          {fieldErrors.date ? (
-            <Text style={s.fieldError} accessibilityRole="alert">{fieldErrors.date}</Text>
-          ) : null}
-        </View>
+        {/* Data — exibida somente na edição; na criação usa a data atual automaticamente */}
+        {isEditing ? (
+          <View style={s.fieldWrapper}>
+            <Text style={s.label}>Data</Text>
+            <TextInput
+              style={[s.input, fieldErrors.date ? s.inputError : null]}
+              value={date}
+              onChangeText={handleDateChange}
+              placeholder="DD/MM/AAAA"
+              placeholderTextColor={colors.icon}
+              keyboardType="numeric"
+              maxLength={10}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+              accessibilityLabel="Campo de data"
+              accessibilityHint="Use o formato DD/MM/AAAA"
+              editable={!isSubmitting}
+            />
+            {fieldErrors.date ? (
+              <Text style={s.fieldError} accessibilityRole="alert">{fieldErrors.date}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Anexo — opcional */}
         <View style={s.fieldWrapper}>
@@ -515,13 +679,8 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
         {/* Importar com IA — visível somente quando há anexo selecionado */}
         {selectedAttachment && !isEditing ? (
           <View style={s.fieldWrapper}>
-
-            {/* Botão de análise */}
             <TouchableOpacity
-              style={[
-                s.aiButton,
-                (isAnalyzing || isSubmitting) && s.buttonDisabled,
-              ]}
+              style={[s.aiButton, (isAnalyzing || isSubmitting) && s.buttonDisabled]}
               onPress={handleAnalyzeWithAI}
               disabled={isAnalyzing || isSubmitting}
               accessibilityRole="button"
@@ -532,7 +691,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               </Text>
             </TouchableOpacity>
 
-            {/* Aviso de baixa confiança */}
             {extractionResult?.confidence === 'low' ? (
               <View style={s.aiWarningBanner} accessibilityRole="alert">
                 <Text style={s.aiWarningText}>
@@ -541,7 +699,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               </View>
             ) : null}
 
-            {/* Confirmação de extração bem-sucedida (confidence high/medium) */}
             {extractionResult && extractionResult.confidence !== 'low' ? (
               <View style={s.aiSuccessBanner}>
                 <Text style={s.aiSuccessText}>
@@ -550,13 +707,11 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               </View>
             ) : null}
 
-            {/* Erro de extração */}
             {extractionError ? (
               <View style={s.errorBanner} accessibilityRole="alert">
                 <Text style={s.errorBannerText}>{extractionError}</Text>
               </View>
             ) : null}
-
           </View>
         ) : null}
 
@@ -627,7 +782,7 @@ function makeStyles(colors: ThemeColors) {
     input: {
       height: 48,
       borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderColor: colors.border,
       borderRadius: 8,
       paddingHorizontal: 12,
       fontSize: 15,
@@ -649,7 +804,7 @@ function makeStyles(colors: ThemeColors) {
       flex: 1,
       height: 44,
       borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderColor: colors.border,
       borderRadius: 8,
       justifyContent: 'center',
       alignItems: 'center',
@@ -691,9 +846,10 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 16,
       fontWeight: '700',
     },
+    // ── Picker fixo (investment) ──
     pickerWrapper: {
       borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderColor: colors.border,
       borderRadius: 8,
       overflow: 'hidden',
     },
@@ -701,20 +857,21 @@ function makeStyles(colors: ThemeColors) {
       paddingHorizontal: 14,
       paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: '#e5e7eb',
+      borderBottomColor: colors.divider,
       backgroundColor: colors.background,
     },
     pickerOptionSelected: {
-      backgroundColor: '#eff6ff',
+      backgroundColor: colors.tint + '18',
     },
     pickerOptionText: {
       fontSize: 15,
       color: colors.icon,
     },
     pickerOptionTextSelected: {
-      color: '#2563eb',
+      color: colors.tint,
       fontWeight: '700',
     },
+    // ── IA ──
     aiButton: {
       height: 48,
       backgroundColor: '#7c3aed',

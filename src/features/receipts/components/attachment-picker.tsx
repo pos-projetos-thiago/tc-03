@@ -230,8 +230,8 @@ export function AttachmentPicker({
           accessibilityLabel="Selecionar imagem da galeria">
           <Text style={[s.buttonText, s.buttonTextOutline]}>
             {selectedAttachment && isImage(selectedAttachment)
-              ? '🖼 Trocar imagem'
-              : '🖼 Imagem'}
+              ? 'Trocar imagem'
+              : 'Imagem'}
           </Text>
         </TouchableOpacity>
 
@@ -243,8 +243,8 @@ export function AttachmentPicker({
           accessibilityLabel="Selecionar documento PDF ou TXT">
           <Text style={[s.buttonText, s.buttonTextOutline]}>
             {selectedAttachment && !isImage(selectedAttachment)
-              ? '📄 Trocar doc'
-              : '📄 PDF / TXT'}
+              ? 'Trocar doc'
+              : 'PDF / TXT'}
           </Text>
         </TouchableOpacity>
       </View>
