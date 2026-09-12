@@ -20,33 +20,33 @@ interface InvestmentPortfolioChartProps {
 }
 
 /**
- * Paleta da carteira: 4 tons harmonizados derivados do verde da marca #00BA7D.
- * Todos pertencem à mesma família, transmitindo uma identidade coerente.
+ * Paleta da carteira: 4 tons da família verde com contraste máximo entre si.
+ * Estratégia: escala de luminosidade bem distribuída, com saltos amplos.
  *
  * Light:
- *   [0] #00BA7D — verde cheio (marca)
- *   [1] #00956A — verde médio-escuro
- *   [2] #007A57 — verde escuro
- *   [3] #33C996 — verde claro/vivo
+ *   [0] #00BA7D — verde marca (médio, referência)
+ *   [1] #003D29 — verde muito escuro (âncora escura, quase preto-verde)
+ *   [2] #7DDFC0 — verde claro/menta (luminoso, alto contraste com os escuros)
+ *   [3] #006644 — verde médio-escuro (ponto intermediário bem separado dos outros)
  *
- * Dark (ligeiramente mais luminosos para contraste no fundo escuro):
+ * Dark (ajustados para contraste no fundo #0F0F0F):
  *   [0] #00BA7D
- *   [1] #00A06E
- *   [2] #008A60
- *   [3] #33D4A0
+ *   [1] #00E8A0 — verde muito claro/neon (âncora clara no escuro)
+ *   [2] #004D34 — verde muito escuro
+ *   [3] #33C496 — verde médio-claro
  */
 const PORTFOLIO_COLORS_LIGHT = [
   '#00BA7D',
-  '#00956A',
-  '#007A57',
-  '#33C996',
+  '#003D29',
+  '#7DDFC0',
+  '#006644',
 ] as const;
 
 const PORTFOLIO_COLORS_DARK = [
   '#00BA7D',
-  '#00A06E',
-  '#008A60',
-  '#33D4A0',
+  '#00E8A0',
+  '#004D34',
+  '#33C496',
 ] as const;
 
 function createStyles(colors: ThemeColors) {
