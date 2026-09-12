@@ -22,19 +22,15 @@ function createStyles(colors: ThemeColors) {
     },
     divider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.divider,
+      backgroundColor: colors.border,
       marginLeft: 16,
     },
     emptyContainer: {
+      paddingVertical: 32,
       alignItems: 'center',
-      paddingVertical: 28,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      borderRadius: 4,
-      backgroundColor: colors.surface,
     },
     emptyText: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.textMuted,
     },
   });

@@ -13,90 +13,69 @@ interface FinancialOverviewProps {
   monthLabel: string;
 }
 
-interface MetricProps {
-  label: string;
-  value: number;
-  caption: string;
-  valueColor?: string;
-  styles: ReturnType<typeof createStyles>;
-  colors: ThemeColors;
-}
-
-function Metric({ label, value, caption, valueColor, styles, colors }: MetricProps) {
-  const resolvedColor =
-    valueColor ?? (value < 0 ? colors.negative : colors.text);
-
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={[styles.metricValue, { color: resolvedColor }]}>
-        {formatCurrency(value)}
-      </Text>
-      <Text style={styles.metricCaption}>{caption}</Text>
-    </View>
-  );
-}
-
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
-      backgroundColor: colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      borderRadius: 4,
-      paddingHorizontal: 20,
-      paddingVertical: 20,
+      gap: 20,
     },
+    // Top row: balance + net worth
     row: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      gap: 0,
     },
     metric: {
       flex: 1,
-      gap: 6,
+      gap: 4,
+    },
+    metricRight: {
+      flex: 1,
+      gap: 4,
+      paddingLeft: 24,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderLeftColor: colors.border,
     },
     metricLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
-      letterSpacing: 0.3,
-    },
-    metricValue: {
-      fontSize: 20,
-      fontWeight: '600',
-      letterSpacing: -0.2,
-    },
-    metricCaption: {
       fontSize: 11,
       color: colors.textMuted,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
     },
-    verticalDivider: {
-      width: StyleSheet.hairlineWidth,
-      alignSelf: 'stretch',
-      backgroundColor: colors.divider,
-      marginHorizontal: 20,
+    metricValue: {
+      fontSize: 22,
+      fontWeight: '600',
+      letterSpacing: -0.5,
+      color: colors.text,
     },
-    horizontalDivider: {
+    metricValueNegative: {
+      color: colors.negative,
+    },
+    // Bottom row: divider + invested this month
+    divider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.divider,
-      marginVertical: 20,
+      backgroundColor: colors.border,
     },
     investedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'baseline',
       gap: 16,
     },
-    investedCaption: {
+    investedLabel: {
       fontSize: 11,
       color: colors.textMuted,
-      marginTop: 4,
-      textTransform: 'capitalize',
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+    },
+    investedMonth: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
     },
     investedValue: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.accent,
-      letterSpacing: -0.2,
+      letterSpacing: -0.3,
     },
   });
 }
@@ -113,31 +92,46 @@ export function FinancialOverview({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Metric
-          label="Saldo disponível"
-          value={balance}
-          caption="Histórico completo"
-          styles={styles}
-          colors={colors}
-        />
-        <View style={styles.verticalDivider} />
-        <Metric
-          label="Patrimônio total"
-          value={netWorth}
-          caption="Histórico completo"
-          styles={styles}
-          colors={colors}
-        />
+        <View style={styles.metric}>
+          <Text style={styles.metricLabel}>Saldo</Text>
+          <Text
+            style={[
+              styles.metricValue,
+              balance < 0 && styles.metricValueNegative,
+            ]}
+          >
+            {formatCurrency(balance)}
+          </Text>
+        </View>
+
+        <View style={styles.metricRight}>
+          <Text style={styles.metricLabel}>Patrimônio</Text>
+          <Text
+            style={[
+              styles.metricValue,
+              netWorth < 0 && styles.metricValueNegative,
+            ]}
+          >
+            {formatCurrency(netWorth)}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.horizontalDivider} />
+      <View style={styles.divider} />
 
       <View style={styles.investedRow}>
         <View>
-          <Text style={styles.metricLabel}>Investido no mês</Text>
-          <Text style={styles.investedCaption}>{monthLabel}</Text>
+          <Text style={styles.investedLabel}>Investido</Text>
+          <Text style={styles.investedMonth}>{monthLabel}</Text>
         </View>
-        <Text style={styles.investedValue}>{formatCurrency(totalInvested)}</Text>
+        <Text
+          style={[
+            styles.investedValue,
+            { color: totalInvested > 0 ? colors.accent : colors.text },
+          ]}
+        >
+          {formatCurrency(totalInvested)}
+        </Text>
       </View>
     </View>
   );

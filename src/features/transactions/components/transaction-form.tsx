@@ -487,7 +487,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           <Text style={s.label}>Tipo</Text>
           <View style={s.segmentRow}>
             <TouchableOpacity
-              style={[s.segment, type === 'income' && s.segmentActiveIncome]}
+              style={[s.segment, type === 'income' && s.segmentActive]}
               onPress={() => {
                 setType('income');
                 setCategory('');
@@ -502,8 +502,9 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
                 Depósito
               </Text>
             </TouchableOpacity>
+            <View style={s.segmentDivider} />
             <TouchableOpacity
-              style={[s.segment, type === 'expense' && s.segmentActiveExpense]}
+              style={[s.segment, type === 'expense' && s.segmentActive]}
               onPress={() => {
                 setType('expense');
                 setCategory('');
@@ -518,8 +519,9 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
                 Saque
               </Text>
             </TouchableOpacity>
+            <View style={s.segmentDivider} />
             <TouchableOpacity
-              style={[s.segment, type === 'investment' && s.segmentActiveInvestment]}
+              style={[s.segment, type === 'investment' && s.segmentActive]}
               onPress={() => {
                 setType('investment');
                 setCategory(INVESTMENT_CATEGORIES[0]);
@@ -753,157 +755,164 @@ function makeStyles(colors: ThemeColors) {
       gap: 4,
     },
     errorBanner: {
-      backgroundColor: '#fef2f2',
-      borderWidth: 1,
-      borderColor: '#fca5a5',
-      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.negative,
+      borderRadius: 4,
       padding: 12,
       marginBottom: 12,
     },
     errorBannerText: {
-      color: '#b91c1c',
-      fontSize: 14,
-      textAlign: 'center',
+      color: colors.negative,
+      fontSize: 13,
     },
     fieldWrapper: {
-      gap: 4,
-      marginBottom: 14,
+      gap: 6,
+      marginBottom: 20,
     },
     label: {
-      fontSize: 14,
+      fontSize: 11,
       fontWeight: '600',
-      color: colors.text,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
     },
     labelOptional: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '400',
-      color: colors.icon,
+      color: colors.textMuted,
+      textTransform: 'none',
+      letterSpacing: 0,
     },
     input: {
       height: 48,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      borderRadius: 8,
+      borderRadius: 6,
       paddingHorizontal: 12,
       fontSize: 15,
       color: colors.text,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     inputError: {
-      borderColor: '#ef4444',
+      borderColor: colors.negative,
     },
     fieldError: {
       fontSize: 12,
-      color: '#ef4444',
+      color: colors.negative,
     },
     segmentRow: {
       flexDirection: 'row',
-      gap: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 6,
+      overflow: 'hidden',
     },
     segment: {
       flex: 1,
       height: 44,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 8,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
-    segmentActiveIncome: {
-      backgroundColor: '#dcfce7',
-      borderColor: '#16a34a',
+    segmentActive: {
+      backgroundColor: colors.tint,
     },
-    segmentActiveExpense: {
-      backgroundColor: '#fee2e2',
-      borderColor: '#dc2626',
-    },
-    segmentActiveInvestment: {
-      backgroundColor: '#eff6ff',
-      borderColor: '#2563eb',
+    segmentDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
     },
     segmentText: {
       fontSize: 14,
-      fontWeight: '600',
-      color: colors.icon,
+      fontWeight: '500',
+      color: colors.textMuted,
     },
     segmentTextActive: {
-      color: colors.text,
+      color: '#ffffff',
+      fontWeight: '600',
     },
     button: {
       height: 50,
       backgroundColor: colors.tint,
-      borderRadius: 10,
+      borderRadius: 6,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 8,
     },
     buttonDisabled: {
-      opacity: 0.6,
+      opacity: 0.5,
     },
     buttonText: {
       color: '#ffffff',
-      fontSize: 16,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
     },
     // ── Picker fixo (investment) ──
     pickerWrapper: {
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      borderRadius: 8,
+      borderRadius: 6,
       overflow: 'hidden',
     },
     pickerOption: {
       paddingHorizontal: 14,
-      paddingVertical: 12,
+      paddingVertical: 13,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.divider,
-      backgroundColor: colors.background,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.surface,
     },
     pickerOptionSelected: {
-      backgroundColor: colors.tint + '18',
+      backgroundColor: colors.tint + '15',
     },
     pickerOptionText: {
-      fontSize: 15,
-      color: colors.icon,
+      fontSize: 14,
+      color: colors.textSecondary,
     },
     pickerOptionTextSelected: {
       color: colors.tint,
-      fontWeight: '700',
+      fontWeight: '600',
     },
     // ── IA ──
     aiButton: {
-      height: 48,
-      backgroundColor: '#7c3aed',
-      borderRadius: 10,
+      height: 46,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 6,
       justifyContent: 'center',
       alignItems: 'center',
     },
     aiButtonText: {
-      color: '#ffffff',
-      fontSize: 15,
-      fontWeight: '700',
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '500',
     },
     aiWarningBanner: {
-      backgroundColor: '#fffbeb',
-      borderWidth: 1,
-      borderColor: '#fcd34d',
-      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: '#F0A500',
+      borderRadius: 4,
       padding: 10,
     },
     aiWarningText: {
-      color: '#92400e',
+      color: colors.textSecondary,
       fontSize: 13,
     },
     aiSuccessBanner: {
-      backgroundColor: '#f0fdf4',
-      borderWidth: 1,
-      borderColor: '#86efac',
-      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.accent,
+      borderRadius: 4,
       padding: 10,
     },
     aiSuccessText: {
-      color: '#166534',
+      color: colors.textSecondary,
       fontSize: 13,
     },
   });

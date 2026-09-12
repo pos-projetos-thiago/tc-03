@@ -16,42 +16,39 @@ interface DashboardHeaderProps {
 
 function resolveFirstName(userName?: string | null): string {
   const trimmed = userName?.trim();
-
   if (!trimmed) return 'Usuário';
-
   return trimmed.split(/\s+/)[0];
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
-      gap: 6,
-      paddingBottom: 8,
-    },
-    greetingRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 14,
     },
-    greetingTextBlock: {
+    avatar: {
+      flexShrink: 0,
+    },
+    textBlock: {
       flex: 1,
       gap: 2,
     },
     greeting: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.textMuted,
-      letterSpacing: 0.2,
+      letterSpacing: 0.1,
     },
-    title: {
-      fontSize: 26,
+    name: {
+      fontSize: 22,
       fontWeight: '600',
       color: colors.text,
-      letterSpacing: -0.3,
+      letterSpacing: -0.4,
     },
     period: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      textTransform: 'capitalize',
+      fontSize: 13,
+      color: colors.textMuted,
+      marginTop: 2,
     },
     logoutButton: {
       padding: 8,
@@ -68,7 +65,7 @@ export function DashboardHeader({ userId, userName, monthLabel }: DashboardHeade
   const firstName = resolveFirstName(userName);
 
   const handleLogout = useCallback(() => {
-    Alert.alert('Sair', 'Deseja encerrar a sessão?', [
+    Alert.alert('Encerrar sessão', 'Deseja sair da sua conta?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: signOut },
     ]);
@@ -76,30 +73,31 @@ export function DashboardHeader({ userId, userName, monthLabel }: DashboardHeade
 
   return (
     <View style={styles.container}>
-      <View style={styles.greetingRow}>
-        {userId ? <UserAvatar userId={userId} size={52} /> : null}
-
-        <View style={styles.greetingTextBlock}>
-          <Text style={styles.greeting}>Olá,</Text>
-          <Text style={styles.title}>{firstName}!</Text>
+      {userId ? (
+        <View style={styles.avatar}>
+          <UserAvatar userId={userId} size={44} />
         </View>
+      ) : null}
 
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={styles.logoutButton}
-          accessibilityLabel="Sair da conta"
-          accessibilityRole="button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <IconSymbol
-            name="rectangle.portrait.and.arrow.right"
-            size={22}
-            color={colors.textMuted}
-          />
-        </TouchableOpacity>
+      <View style={styles.textBlock}>
+        <Text style={styles.greeting}>Olá,</Text>
+        <Text style={styles.name}>{firstName}!</Text>
+        <Text style={styles.period}>{monthLabel}</Text>
       </View>
 
-      <Text style={styles.period}>{monthLabel}</Text>
+      <TouchableOpacity
+        onPress={handleLogout}
+        style={styles.logoutButton}
+        accessibilityLabel="Sair da conta"
+        accessibilityRole="button"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <IconSymbol
+          name="rectangle.portrait.and.arrow.right"
+          size={20}
+          color={colors.textMuted}
+        />
+      </TouchableOpacity>
     </View>
   );
 }

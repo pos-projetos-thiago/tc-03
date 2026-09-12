@@ -230,7 +230,6 @@ interface TransactionFilterBarProps {
 export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFilterBarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const isDark = colorScheme === 'dark';
 
   const [localType, setLocalType] = useState<TransactionType | null>(filter.type);
   const [localCategory, setLocalCategory] = useState<string>(filter.category ?? '');
@@ -297,7 +296,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
   }
 
   const active = isFilterActive(filter);
-  const s = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
+  const s = useMemo(() => makeStyles(colors), [colors]);
 
   // surface do tema para o dropdown (igual ao input do filtro)
   const surface = colors.surface;
@@ -320,8 +319,9 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
               Todos
             </Text>
           </Pressable>
+          <View style={s.segmentDivider} />
           <Pressable
-            style={[s.segment, localType === 'income' && s.segmentIncome]}
+            style={[s.segment, localType === 'income' && s.segmentSelected]}
             onPress={() => handleTypeChange(localType === 'income' ? null : 'income')}
             accessibilityRole="button"
             accessibilityLabel="Receita"
@@ -330,8 +330,9 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
               Receita
             </Text>
           </Pressable>
+          <View style={s.segmentDivider} />
           <Pressable
-            style={[s.segment, localType === 'expense' && s.segmentExpense]}
+            style={[s.segment, localType === 'expense' && s.segmentSelected]}
             onPress={() => handleTypeChange(localType === 'expense' ? null : 'expense')}
             accessibilityRole="button"
             accessibilityLabel="Despesa"
@@ -340,8 +341,9 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
               Despesa
             </Text>
           </Pressable>
+          <View style={s.segmentDivider} />
           <Pressable
-            style={[s.segment, localType === 'investment' && s.segmentInvestment]}
+            style={[s.segment, localType === 'investment' && s.segmentSelected]}
             onPress={() =>
               handleTypeChange(localType === 'investment' ? null : 'investment')
             }
@@ -353,7 +355,7 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
                 s.segmentText,
                 localType === 'investment' && s.segmentTextSelected,
               ]}>
-              Investimento
+              Invest.
             </Text>
           </Pressable>
         </View>
@@ -478,64 +480,55 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
 // Styles
 // ---------------------------------------------------------------------------
 
-function makeStyles(colors: ThemeColors, isDark: boolean) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.background,
       paddingHorizontal: 20,
-      paddingVertical: 14,
+      paddingVertical: 16,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
-      gap: 12,
+      gap: 14,
     },
     fieldWrapper: {
-      gap: 4,
+      gap: 6,
     },
     label: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
-      color: colors.icon,
+      color: colors.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.6,
     },
     segmentRow: {
       flexDirection: 'row',
-      gap: 6,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 6,
+      overflow: 'hidden',
     },
     segment: {
       flex: 1,
       height: 36,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 6,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.surface,
     },
     segmentSelected: {
-      borderColor: colors.tint,
-      backgroundColor: colors.tint + '18',
+      backgroundColor: colors.tint,
     },
-    segmentIncome: {
-      borderColor: '#16a34a',
-      backgroundColor: isDark ? 'rgba(22, 163, 74, 0.15)' : '#dcfce7',
-    },
-    segmentExpense: {
-      borderColor: '#dc2626',
-      backgroundColor: isDark ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2',
-    },
-    segmentInvestment: {
-      borderColor: '#2563eb',
-      backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
+    segmentDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
     },
     segmentText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '500',
-      color: colors.icon,
+      color: colors.textMuted,
     },
     segmentTextSelected: {
-      color: colors.text,
-      fontWeight: '700',
+      color: '#ffffff',
+      fontWeight: '600',
     },
     // Chips de categoria (investimento)
     chipsRow: {
@@ -545,24 +538,24 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
     },
     chip: {
       paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
+      paddingVertical: 7,
+      borderRadius: 4,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
       backgroundColor: colors.surface,
     },
     chipSelected: {
-      borderColor: '#2563eb',
-      backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
+      borderColor: colors.tint,
+      backgroundColor: colors.tint + '15',
     },
     chipText: {
       fontSize: 13,
-      fontWeight: '500',
-      color: colors.icon,
+      fontWeight: '400',
+      color: colors.textSecondary,
     },
     chipTextSelected: {
-      color: isDark ? '#93c5fd' : '#1d4ed8',
-      fontWeight: '700',
+      color: colors.tint,
+      fontWeight: '600',
     },
     // Campos de data
     dateRow: {
@@ -572,20 +565,20 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
     inputHalf: {
       flex: 1,
       height: 40,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      borderRadius: 8,
+      borderRadius: 6,
       paddingHorizontal: 10,
       fontSize: 14,
       color: colors.text,
       backgroundColor: colors.surface,
     },
     inputError: {
-      borderColor: '#ef4444',
+      borderColor: colors.negative,
     },
     fieldError: {
       fontSize: 12,
-      color: '#ef4444',
+      color: colors.negative,
     },
     // Botões
     actions: {
@@ -594,22 +587,22 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
       alignItems: 'center',
     },
     btnApply: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 8,
+      paddingHorizontal: 20,
+      paddingVertical: 9,
+      borderRadius: 6,
     },
     btnApplyText: {
       color: '#fff',
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
     },
     btnClear: {
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 9,
     },
     btnClearText: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '500',
     },
   });
 }

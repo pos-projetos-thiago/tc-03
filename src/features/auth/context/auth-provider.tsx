@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from 'react';
 
 import { authService } from '../services/firebase-auth.service';
+import { transactionService } from '@/src/features/transactions/services/firestore-transaction.service';
 import { isFirebaseConfigured } from '@/src/lib/firebase/config';
 import {
   describeOobCode,
@@ -102,6 +103,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // o displayName chega null pelo listener. Corrige com o retorno do
       // signUp, que já contém o nome após updateProfile + reload.
       dispatch({ type: 'SET_USER', payload: user });
+      // Cria a transação de saldo inicial para o novo usuário.
+      // Executado em background — não bloqueia o login em caso de falha.
+      transactionService.seedInitialBalance(user.id).catch(() => {
+        // Falha silenciosa: o usuário já está autenticado e pode usar o app.
+        // O saldo inicial pode ser adicionado manualmente se necessário.
+      });
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: mapFirebaseError(err) });
     }

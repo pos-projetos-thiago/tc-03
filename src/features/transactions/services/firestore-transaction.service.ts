@@ -208,6 +208,29 @@ class FirestoreTransactionService implements ITransactionService {
 
     await deleteDoc(ref);
   }
+  async seedInitialBalance(userId: string): Promise<void> {
+    const now = Timestamp.now();
+
+    // Usa a data de hoje (UTC) como data da transação de abertura
+    const today = new Date();
+    const isoDate = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 12, 0, 0),
+    ).toISOString();
+
+    const dto: TransactionDTO = {
+      userId,
+      type: 'income',
+      amount: 2000,
+      category: 'Saldo inicial',
+      description: 'Saldo de boas-vindas',
+      date: toTimestamp(isoDate),
+      receiptUrl: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await addDoc(collection(db, COLLECTION), dto);
+  }
 }
 
 // Singleton — mesmo padrão do authService

@@ -1,17 +1,17 @@
 import type { ProcessedSegment } from 'expo-skia-charts';
 import React, { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { INVESTMENT_CATEGORIES } from '@/src/features/transactions/types/transaction-investment-categories';
 
 import type { CategoryBreakdown } from '../types/dashboard-summary';
+import type { ThemeColors } from './dashboard-palette';
 import { useDashboardColors } from './dashboard-palette';
 import {
   ChartCenterContent,
   DashboardDonutChart,
   DONUT_CHART_STYLE,
   DonutChartLegend,
-  useChartSectionStyles,
   useDonutChartHeight,
 } from './donut-chart-ui';
 
@@ -19,25 +19,76 @@ interface InvestmentPortfolioChartProps {
   data: CategoryBreakdown[];
 }
 
+/**
+ * Paleta da carteira: 4 tons harmonizados derivados do verde da marca #00BA7D.
+ * Todos pertencem à mesma família, transmitindo uma identidade coerente.
+ *
+ * Light:
+ *   [0] #00BA7D — verde cheio (marca)
+ *   [1] #00956A — verde médio-escuro
+ *   [2] #007A57 — verde escuro
+ *   [3] #33C996 — verde claro/vivo
+ *
+ * Dark (ligeiramente mais luminosos para contraste no fundo escuro):
+ *   [0] #00BA7D
+ *   [1] #00A06E
+ *   [2] #008A60
+ *   [3] #33D4A0
+ */
+const PORTFOLIO_COLORS_LIGHT = [
+  '#00BA7D',
+  '#00956A',
+  '#007A57',
+  '#33C996',
+] as const;
+
+const PORTFOLIO_COLORS_DARK = [
+  '#00BA7D',
+  '#00A06E',
+  '#008A60',
+  '#33D4A0',
+] as const;
+
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    emptyContainer: {
+      paddingVertical: 40,
+      alignItems: 'center',
+      gap: 6,
+    },
+    emptyTitle: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    emptyDescription: {
+      fontSize: 12,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 18,
+      paddingHorizontal: 8,
+    },
+  });
+}
+
 export function InvestmentPortfolioChart({ data }: InvestmentPortfolioChartProps) {
   const colors = useDashboardColors();
-  const chartSectionStyles = useChartSectionStyles();
+  const isDark = colors.background === '#0F0F0F';
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const chartHeight = useDonutChartHeight('secondary');
 
-  const portfolioColors = useMemo(
-    () => [colors.income, colors.expense, colors.investment, colors.category] as const,
-    [colors],
-  );
+  // Paleta de tons de verde — identidade coesa, sem cores heterogêneas
+  const portfolioColors = isDark ? PORTFOLIO_COLORS_DARK : PORTFOLIO_COLORS_LIGHT;
 
   const colorByCategory = useMemo(
     () =>
       Object.fromEntries(
         INVESTMENT_CATEGORIES.map((category, index) => [
           category,
-          portfolioColors[index] ?? colors.accent,
+          portfolioColors[index % portfolioColors.length],
         ]),
       ) as Record<string, string>,
-    [colors.accent, portfolioColors],
+    [portfolioColors],
   );
 
   const chartData = useMemo(
@@ -54,79 +105,77 @@ export function InvestmentPortfolioChart({ data }: InvestmentPortfolioChartProps
   const chartColors = useMemo(
     () =>
       chartData.map(
-        (item) => colorByCategory[item.label] ?? colors.accent,
+        (item) => colorByCategory[item.label] ?? portfolioColors[0],
       ),
-    [chartData, colorByCategory, colors.accent],
+    [chartData, colorByCategory, portfolioColors],
   );
 
   if (chartData.length === 0) {
     return (
-      <View style={chartSectionStyles.surface}>
-        <Text style={chartSectionStyles.description}>
-          Como seus investimentos estão distribuídos entre os tipos da carteira.
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>Nenhum investimento neste mês</Text>
+        <Text style={styles.emptyDescription}>
+          Registre investimentos para visualizar a distribuição da carteira.
         </Text>
-        <View style={chartSectionStyles.emptyContainer}>
-          <Text style={chartSectionStyles.emptyTitle}>
-            Nenhum investimento neste mês
-          </Text>
-          <Text style={chartSectionStyles.emptyDescription}>
-            Registre investimentos para visualizar a distribuição da carteira.
-          </Text>
-        </View>
       </View>
     );
   }
 
-  return (
-    <View style={chartSectionStyles.surface}>
-      <Text style={chartSectionStyles.description}>
-        Como seus investimentos estão distribuídos entre os tipos da carteira.
-      </Text>
-      <DashboardDonutChart
-        height={chartHeight}
-        config={{
-          data: chartData,
-          colors: chartColors,
-          strokeWidth: DONUT_CHART_STYLE.strokeWidth,
-          gap: DONUT_CHART_STYLE.gap,
-          roundedCorners: DONUT_CHART_STYLE.roundedCorners,
-          animationDuration: DONUT_CHART_STYLE.animationDuration,
-          legend: {
-            enabled: true,
-            renderContent: (segments: ProcessedSegment[]) => (
-              <DonutChartLegend segments={segments} />
-            ),
-          },
-          hover: {
-            enabled: true,
-            animateOnHover: true,
-            hitSlop: DONUT_CHART_STYLE.hitSlop,
-          },
-          centerValues: {
-            enabled: true,
-            renderContent: (
-              _segments: ProcessedSegment[],
-              total: number,
-              hoveredSegment: ProcessedSegment | null,
-            ) => {
-              const { value, label, color } = hoveredSegment ?? {
-                value: total,
-                label: 'Investimentos',
-                color: colors.text,
-              };
+  const total = chartData.reduce((s, d) => s + d.value, 0);
 
-              return (
-                <ChartCenterContent
-                  value={value}
-                  label={label}
-                  accentColor={color}
-                  isTotal={!hoveredSegment}
-                />
-              );
-            },
+  return (
+    <DashboardDonutChart
+      height={chartHeight}
+      legend={
+        <DonutChartLegend
+          segments={chartData.map((item, index) => ({
+            ...item,
+            percentage: total > 0 ? item.value / total : 0,
+            startAngle: 0,
+            sweepAngle: 0,
+            color: chartColors[index] ?? portfolioColors[0],
+            index,
+          }))}
+        />
+      }
+      config={{
+        data: chartData,
+        colors: chartColors,
+        strokeWidth: DONUT_CHART_STYLE.strokeWidth,
+        gap: DONUT_CHART_STYLE.gap,
+        roundedCorners: DONUT_CHART_STYLE.roundedCorners,
+        animationDuration: DONUT_CHART_STYLE.animationDuration,
+        // Legend disabled inside the chart — rendered externally via the
+        // `legend` prop on DashboardDonutChart so it doesn't shrink the ring.
+        legend: { enabled: false },
+        hover: {
+          enabled: true,
+          animateOnHover: true,
+          hitSlop: DONUT_CHART_STYLE.hitSlop,
+        },
+        centerValues: {
+          enabled: true,
+          renderContent: (
+            _segments: ProcessedSegment[],
+            total: number,
+            hoveredSegment: ProcessedSegment | null,
+          ) => {
+            const { value, label, color } = hoveredSegment ?? {
+              value: total,
+              label: 'Carteira',
+              color: colors.text,
+            };
+            return (
+              <ChartCenterContent
+                value={value}
+                label={label}
+                accentColor={color}
+                isTotal={!hoveredSegment}
+              />
+            );
           },
-        }}
-      />
-    </View>
+        },
+      }}
+    />
   );
 }
