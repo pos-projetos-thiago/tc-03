@@ -27,20 +27,10 @@ import type {
 import type { TransactionFilter } from '../types/transaction-filter';
 import type { ITransactionService } from '../types/transaction-service.interface';
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const COLLECTION = 'transactions';
 const PAGE_SIZE = 20;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Converte um DocumentSnapshot do Firestore para o modelo de domínio Transaction.
- */
+/** Converte um DocumentSnapshot do Firestore para o modelo de domínio Transaction. */
 function toTransaction(snapshot: DocumentSnapshot): Transaction {
   const dto = snapshot.data() as TransactionDTO;
   return {
@@ -57,16 +47,10 @@ function toTransaction(snapshot: DocumentSnapshot): Transaction {
   };
 }
 
-/**
- * Converte uma string ISO 8601 para Timestamp do Firestore.
- */
+/** Converte uma string ISO 8601 para Timestamp do Firestore. */
 function toTimestamp(iso: string): Timestamp {
   return Timestamp.fromDate(new Date(iso));
 }
-
-// ---------------------------------------------------------------------------
-// Service implementation
-// ---------------------------------------------------------------------------
 
 class FirestoreTransactionService implements ITransactionService {
   async getPage(
@@ -76,13 +60,11 @@ class FirestoreTransactionService implements ITransactionService {
   ): Promise<PaginatedResult<Transaction>> {
     const ref = collection(db, COLLECTION);
 
-    // Constraints base: escopo do usuário + ordenação
     const constraints: QueryConstraint[] = [
       where('userId', '==', userId),
       orderBy('date', 'desc'),
     ];
 
-    // Filtros opcionais
     if (filter?.type) {
       constraints.push(where('type', '==', filter.type));
     }
@@ -94,12 +76,10 @@ class FirestoreTransactionService implements ITransactionService {
       constraints.push(where('date', '<=', Timestamp.fromDate(filter.dateRange.end)));
     }
 
-    // Paginação via cursor
     if (cursor) {
       constraints.push(startAfter(cursor as DocumentSnapshot));
     }
 
-    // Busca PAGE_SIZE + 1 para saber se há próxima página
     constraints.push(limit(PAGE_SIZE + 1));
 
     const snapshot = await getDocs(query(ref, ...constraints));
@@ -163,10 +143,7 @@ class FirestoreTransactionService implements ITransactionService {
 
     const now = Timestamp.now();
 
-    // Constrói apenas os campos que serão atualizados
-    const patch: Partial<TransactionDTO> & { updatedAt: Timestamp } = {
-      updatedAt: now,
-    };
+    const patch: Partial<TransactionDTO> & { updatedAt: Timestamp } = { updatedAt: now };
     if (data.type !== undefined) patch.type = data.type;
     if (data.amount !== undefined) patch.amount = data.amount;
     if (data.category !== undefined) patch.category = data.category;
@@ -176,7 +153,6 @@ class FirestoreTransactionService implements ITransactionService {
 
     await updateDoc(ref, patch);
 
-    // Retorna o documento atualizado como modelo de domínio
     const updated: TransactionDTO = { ...existing, ...patch };
     return {
       id,
@@ -208,7 +184,28 @@ class FirestoreTransactionService implements ITransactionService {
 
     await deleteDoc(ref);
   }
+
+  async seedInitialBalance(userId: string): Promise<void> {
+    const now = Timestamp.now();
+    const today = new Date();
+    const isoDate = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 12, 0, 0),
+    ).toISOString();
+
+    const dto: TransactionDTO = {
+      userId,
+      type: 'income',
+      amount: 2000,
+      category: 'Saldo inicial',
+      description: 'Saldo de boas-vindas',
+      date: toTimestamp(isoDate),
+      receiptUrl: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await addDoc(collection(db, COLLECTION), dto);
+  }
 }
 
-// Singleton — mesmo padrão do authService
 export const transactionService: ITransactionService = new FirestoreTransactionService();

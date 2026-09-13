@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 import {
   attachmentTypeLabel,
@@ -21,42 +21,16 @@ import {
   type SelectedAttachment,
 } from '../types/selected-attachment';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface AttachmentPickerProps {
-  /**
-   * Arquivo selecionado localmente (ainda não enviado ao Storage).
-   * Null quando nenhum arquivo foi selecionado nesta sessão.
-   */
   selectedAttachment: SelectedAttachment | null;
-  /**
-   * URL do anexo já salvo no Storage (modo edição).
-   * Exibida como "Anexo existente" quando selectedAttachment é null.
-   */
   existingAttachmentUrl: string | null;
-  /** Chamado quando um arquivo é selecionado. */
   onSelect: (attachment: SelectedAttachment) => void;
-  /** Indica se os controles devem estar desabilitados (ex: durante submit). */
   disabled?: boolean;
-  /** Indica se o upload está em progresso. */
   isUploading?: boolean;
-  /** Percentual de progresso do upload (0–100). */
   uploadProgress?: number | null;
-  /** Mensagem de erro do upload. */
   uploadError?: string | null;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Componente de seleção e visualização de anexo.
- * Suporta imagens (via galeria), PDF e TXT (via document picker).
- * Reutilizável fora do TransactionForm.
- */
 export function AttachmentPicker({
   selectedAttachment,
   existingAttachmentUrl,
@@ -69,10 +43,6 @@ export function AttachmentPicker({
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const s = makeStyles(colors);
-
-  // -------------------------------------------------------------------------
-  // Seleção via galeria (imagens)
-  // -------------------------------------------------------------------------
 
   async function handlePickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -106,10 +76,6 @@ export function AttachmentPicker({
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Seleção via document picker (PDF, TXT, imagens)
-  // -------------------------------------------------------------------------
-
   async function handlePickDocument() {
     const result = await DocumentPicker.getDocumentAsync({
       type: ['application/pdf', 'text/plain', 'image/*'],
@@ -126,10 +92,6 @@ export function AttachmentPicker({
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Abertura / visualização do anexo existente
-  // -------------------------------------------------------------------------
-
   async function handleOpenExisting() {
     if (!existingAttachmentUrl) return;
     try {
@@ -144,20 +106,13 @@ export function AttachmentPicker({
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
   const hasExisting = existingAttachmentUrl !== null && selectedAttachment === null;
   const isInteractionDisabled = disabled || isUploading;
 
   return (
     <View style={s.container}>
-
-      {/* Anexo já salvo (modo edição, sem nova seleção) */}
       {hasExisting ? (
         <View style={s.existingBadge} accessibilityRole="text">
-          <Text style={s.existingIcon}>📎</Text>
           <View style={s.existingTextCol}>
             <Text style={s.existingTitle}>Anexo existente</Text>
             <Text style={s.existingHint}>Selecione um novo arquivo para substituir</Text>
@@ -173,7 +128,6 @@ export function AttachmentPicker({
         </View>
       ) : null}
 
-      {/* Preview do arquivo selecionado localmente */}
       {selectedAttachment ? (
         <View style={s.previewContainer}>
           {isImage(selectedAttachment) ? (
@@ -185,8 +139,8 @@ export function AttachmentPicker({
             />
           ) : (
             <View style={s.docIconContainer}>
-              <Text style={s.docIcon}>
-                {selectedAttachment.mimeType === 'application/pdf' ? '📄' : '📝'}
+              <Text style={s.docLabel}>
+                {selectedAttachment.mimeType === 'application/pdf' ? 'PDF' : 'TXT'}
               </Text>
             </View>
           )}
@@ -202,7 +156,6 @@ export function AttachmentPicker({
         </View>
       ) : null}
 
-      {/* Progresso de upload */}
       {isUploading ? (
         <View
           style={s.progressRow}
@@ -210,54 +163,43 @@ export function AttachmentPicker({
           accessibilityValue={{ now: uploadProgress ?? 0, min: 0, max: 100 }}>
           <ActivityIndicator size="small" color={colors.tint} />
           <Text style={s.progressText}>
-            Enviando anexo… {uploadProgress !== null ? `${uploadProgress}%` : ''}
+            Enviando… {uploadProgress !== null ? `${uploadProgress}%` : ''}
           </Text>
         </View>
       ) : null}
 
-      {/* Erro de upload */}
       {uploadError ? (
         <Text style={s.errorText} accessibilityRole="alert">{uploadError}</Text>
       ) : null}
 
-      {/* Botões de seleção */}
       <View style={s.buttonRow}>
         <TouchableOpacity
-          style={[s.button, s.buttonOutline, isInteractionDisabled && s.buttonDisabled]}
+          style={[s.button, isInteractionDisabled && s.buttonDisabled]}
           onPress={handlePickImage}
           disabled={isInteractionDisabled}
           accessibilityRole="button"
           accessibilityLabel="Selecionar imagem da galeria">
-          <Text style={[s.buttonText, s.buttonTextOutline]}>
-            {selectedAttachment && isImage(selectedAttachment)
-              ? '🖼 Trocar imagem'
-              : '🖼 Imagem'}
+          <Text style={s.buttonText}>
+            {selectedAttachment && isImage(selectedAttachment) ? 'Trocar imagem' : 'Imagem'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[s.button, s.buttonOutline, isInteractionDisabled && s.buttonDisabled]}
+          style={[s.button, isInteractionDisabled && s.buttonDisabled]}
           onPress={handlePickDocument}
           disabled={isInteractionDisabled}
           accessibilityRole="button"
           accessibilityLabel="Selecionar documento PDF ou TXT">
-          <Text style={[s.buttonText, s.buttonTextOutline]}>
-            {selectedAttachment && !isImage(selectedAttachment)
-              ? '📄 Trocar doc'
-              : '📄 PDF / TXT'}
+          <Text style={s.buttonText}>
+            {selectedAttachment && !isImage(selectedAttachment) ? 'Trocar doc' : 'PDF / TXT'}
           </Text>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
       gap: 8,
@@ -265,16 +207,15 @@ function makeStyles(colors: (typeof Colors)['light']) {
     existingBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#f0fdf4',
-      borderWidth: 1,
-      borderColor: '#86efac',
-      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.accent,
+      borderRadius: 4,
       paddingHorizontal: 12,
       paddingVertical: 10,
       gap: 10,
-    },
-    existingIcon: {
-      fontSize: 18,
     },
     existingTextCol: {
       flex: 1,
@@ -282,51 +223,54 @@ function makeStyles(colors: (typeof Colors)['light']) {
     existingTitle: {
       fontSize: 13,
       fontWeight: '600',
-      color: '#16a34a',
+      color: colors.text,
     },
     existingHint: {
       fontSize: 11,
-      color: '#4b7c5e',
+      color: colors.textMuted,
       marginTop: 1,
     },
     openLink: {
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '600',
       color: colors.tint,
     },
     previewContainer: {
-      borderWidth: 1,
-      borderColor: '#d1d5db',
-      borderRadius: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 6,
       overflow: 'hidden',
     },
     imagePreview: {
       width: '100%',
       height: 160,
-      backgroundColor: '#f3f4f6',
+      backgroundColor: colors.divider,
     },
     docIconContainer: {
-      height: 80,
+      height: 64,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: '#f9fafb',
+      backgroundColor: colors.surface,
     },
-    docIcon: {
-      fontSize: 40,
+    docLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textMuted,
+      letterSpacing: 0.5,
     },
     fileInfo: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     fileName: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '500',
       color: colors.text,
     },
     fileMeta: {
       fontSize: 11,
-      color: colors.icon,
+      color: colors.textMuted,
       marginTop: 2,
     },
     progressRow: {
@@ -336,11 +280,11 @@ function makeStyles(colors: (typeof Colors)['light']) {
     },
     progressText: {
       fontSize: 13,
-      color: colors.icon,
+      color: colors.textMuted,
     },
     errorText: {
       fontSize: 12,
-      color: '#ef4444',
+      color: colors.negative,
     },
     buttonRow: {
       flexDirection: 'row',
@@ -349,23 +293,19 @@ function makeStyles(colors: (typeof Colors)['light']) {
     button: {
       flex: 1,
       height: 44,
-      borderRadius: 8,
+      borderRadius: 6,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.tint,
+      backgroundColor: colors.surface,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    buttonOutline: {
-      borderWidth: 1,
-      borderColor: colors.tint,
-      backgroundColor: colors.background,
     },
     buttonDisabled: {
       opacity: 0.5,
     },
     buttonText: {
       fontSize: 13,
-      fontWeight: '600',
-    },
-    buttonTextOutline: {
+      fontWeight: '500',
       color: colors.tint,
     },
   });

@@ -6,14 +6,10 @@ import { geminiModel } from '@/src/lib/firebase/ai';
 import type { SelectedAttachment } from '../types/selected-attachment';
 import type { ExtractionResult } from '../types/extraction-result';
 
-// ---------------------------------------------------------------------------
-// Schema de resposta estruturada
-// ---------------------------------------------------------------------------
-
 /**
- * Schema JSON passado ao Gemini para forçar saída estruturada.
+ * Schema JSON passado ao Gemini para saída estruturada.
  * Usando responseMimeType "application/json" + responseSchema, o modelo
- * retorna JSON válido conforme o contrato — sem necessidade de JSON.parse frágil.
+ * retorna JSON válido sem necessidade de parsing frágil.
  */
 const EXTRACTION_SCHEMA = {
   type: SchemaType.OBJECT,
@@ -56,10 +52,6 @@ const EXTRACTION_SCHEMA = {
   required: ['confidence'],
 };
 
-// ---------------------------------------------------------------------------
-// Prompt
-// ---------------------------------------------------------------------------
-
 const SYSTEM_PROMPT = `You are a financial data extractor. Analyze the provided document or image and extract transaction information.
 
 Rules:
@@ -84,16 +76,9 @@ Examples:
 "PIX recebido de João no valor de 500 reais" → type: income, amount: 500, category: "PIX", description: "PIX recebido de João"
 "Uber R$ 28,90" → type: expense, amount: 28.90, category: "Transporte", description: "Corrida Uber"`;
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
-
 /**
- * Serviço de extração de dados de transação via Firebase AI Logic (Gemini).
- * Responsável exclusivamente por enviar o conteúdo ao modelo e retornar
- * um ExtractionResult estruturado.
- *
- * NÃO cria transações. NÃO persiste dados.
+ * Extrai dados de transação de um arquivo via Firebase AI Logic (Gemini).
+ * Não cria transações nem persiste dados — apenas retorna um ExtractionResult estruturado.
  */
 export async function extractTransactionFromAttachment(
   attachment: SelectedAttachment,
@@ -115,25 +100,18 @@ export async function extractTransactionFromAttachment(
   return normalizeResult(parsed);
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /**
  * Constrói as partes da mensagem para o Gemini de acordo com o tipo do arquivo.
  *
- * - TXT: lê como texto via expo-file-system/legacy readAsStringAsync e envia como part de texto
- * - Imagem / PDF: lê como base64 via expo-file-system/legacy readAsStringAsync (EncodingType.Base64)
- *   e envia como inlineData (Gemini suporta PDF nativo via inlineData)
+ * TXT: lido como texto puro via expo-file-system/legacy (suporta URIs content:// e file://).
+ * Imagem/PDF: lido como base64 e enviado como inlineData.
  *
- * Usa expo-file-system/legacy porque suporta URIs content:// (Android DocumentPicker)
- * e file:// (iOS / cache do DocumentPicker) de forma confiável.
- * A API nova (new File(uri)) rejeita URIs content:// via validatePath().
+ * A API nova (new File(uri)) rejeita URIs content:// via validatePath(),
+ * por isso usamos expo-file-system/legacy.
  */
 async function buildParts(attachment: SelectedAttachment): Promise<Part[]> {
   const { uri, mimeType } = attachment;
 
-  // TXT — envia como texto puro para economizar tokens
   if (mimeType === 'text/plain') {
     const text = await LegacyFS.readAsStringAsync(uri, {
       encoding: LegacyFS.EncodingType.UTF8,
@@ -144,25 +122,18 @@ async function buildParts(attachment: SelectedAttachment): Promise<Part[]> {
     ];
   }
 
-  // Imagem ou PDF — envia como base64 para entrada multimodal
   const base64 = await LegacyFS.readAsStringAsync(uri, {
     encoding: LegacyFS.EncodingType.Base64,
   });
 
   return [
     { text: 'Analyze this document and extract transaction information:' },
-    {
-      inlineData: {
-        mimeType,
-        data: base64,
-      },
-    },
+    { inlineData: { mimeType, data: base64 } },
   ];
 }
 
 /**
- * Normaliza e valida o objeto retornado pelo Gemini,
- * garantindo que o contrato ExtractionResult seja sempre respeitado.
+ * Normaliza o objeto retornado pelo Gemini garantindo o contrato ExtractionResult.
  */
 function normalizeResult(raw: Partial<ExtractionResult>): ExtractionResult {
   const validTypes = ['income', 'expense', 'investment'] as const;

@@ -11,6 +11,11 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? '',
 };
 
+/** Indica se as variáveis EXPO_PUBLIC_FIREBASE_* foram carregadas pelo Metro. */
+export function isFirebaseConfigured(): boolean {
+  return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
+}
+
 // Evita inicializar múltiplas vezes em hot-reload
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 

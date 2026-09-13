@@ -1,5 +1,9 @@
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { Colors, type ThemeColors } from '@/constants/theme';
+import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
 import type { Transaction, TransactionType } from '../types/transaction';
 
@@ -7,50 +11,74 @@ interface TransactionItemProps {
   transaction: Transaction;
   onPress?: (transaction: Transaction) => void;
   onDelete?: (transaction: Transaction) => void;
+  /** `card` para a lista principal; `embedded` para uso dentro de containers no Dashboard. */
+  variant?: 'card' | 'embedded';
 }
 
-// ---------------------------------------------------------------------------
-// Config por tipo
-// ---------------------------------------------------------------------------
+interface TypeMeta {
+  label: string;
+  amountPrefix: string;
+  amountColor: string;
+}
 
-const TYPE_CONFIG: Record<
-  TransactionType,
-  { label: string; amountPrefix: string; amountColor: string; badgeBackground: string; badgeText: string }
-> = {
-  income: {
-    label: 'DEPÓSITO',
-    amountPrefix: '+',
-    amountColor: '#16a34a',
-    badgeBackground: '#dcfce7',
-    badgeText: '#15803d',
-  },
-  expense: {
-    label: 'SAQUE',
-    amountPrefix: '-',
-    amountColor: '#dc2626',
-    badgeBackground: '#fee2e2',
-    badgeText: '#b91c1c',
-  },
-  investment: {
-    label: 'INVESTIMENTO',
-    amountPrefix: '',
-    amountColor: '#2563eb',
-    badgeBackground: '#eff6ff',
-    badgeText: '#1d4ed8',
-  },
-};
+const DESTRUCTIVE_COLOR = '#E05252';
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+function getTypeMeta(type: TransactionType, colors: ThemeColors): TypeMeta {
+  switch (type) {
+    case 'income':
+      return { label: 'Depósito', amountPrefix: '+', amountColor: colors.income };
+    case 'expense':
+      return { label: 'Saque', amountPrefix: '−', amountColor: colors.expense };
+    case 'investment':
+      // Investimentos são neutros — nem positivo nem negativo.
+      // Usar textSecondary evita adicionar uma terceira cor de destaque na lista.
+      return { label: 'Investimento', amountPrefix: '', amountColor: colors.textSecondary };
+  }
+}
 
-/**
- * Card de uma transação na lista.
- * Exibe badge com o tipo de operação (DEPÓSITO / SAQUE / INVESTIMENTO).
- * Usa Pressable para compatibilidade com mouse em React Native Web.
- */
-export function TransactionItem({ transaction, onPress, onDelete }: TransactionItemProps) {
-  const config = TYPE_CONFIG[transaction.type];
+interface ActionIconButtonProps {
+  icon: 'create-outline' | 'trash-outline';
+  onPress: () => void;
+  accessibilityLabel: string;
+  color: string;
+  pressedColor: string;
+}
+
+function ActionIconButton({
+  icon,
+  onPress,
+  accessibilityLabel,
+  color,
+  pressedColor,
+}: ActionIconButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={6}
+      style={({ pressed }) => [
+        actionStyles.actionButton,
+        pressed && { backgroundColor: pressedColor },
+      ]}>
+      <Ionicons name={icon} size={16} color={color} />
+    </Pressable>
+  );
+}
+
+export function TransactionItem({
+  transaction,
+  onPress,
+  onDelete,
+  variant = 'embedded',
+}: TransactionItemProps) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const colors = Colors[colorScheme];
+  const isDark = colorScheme === 'dark';
+  const styles = useMemo(() => createStyles(colors, variant), [colors, variant]);
+
+  const meta = getTypeMeta(transaction.type, colors);
+  const actionPressedColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
 
   const formattedDate = new Date(transaction.date).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -63,134 +91,140 @@ export function TransactionItem({ transaction, onPress, onDelete }: TransactionI
     currency: 'BRL',
   });
 
+  const title = transaction.category;
+  const subtitle = transaction.description?.trim();
+
   return (
     <View style={styles.container}>
-      {/* Corpo pressável */}
-      <Pressable
-        style={({ pressed }) => [styles.body, pressed && onPress ? styles.bodyPressed : null]}
-        onPress={onPress ? () => onPress(transaction) : undefined}
-        android_ripple={onPress ? { color: '#e5e7eb' } : undefined}
-        accessibilityRole={onPress ? 'button' : 'none'}
-        accessibilityLabel={
-          onPress ? `Editar transação: ${transaction.description || transaction.category}` : undefined
-        }>
-
-        <View style={styles.info}>
-          {/* Badge de tipo */}
-          <View
-            style={[styles.badge, { backgroundColor: config.badgeBackground }]}
-            accessibilityRole="text"
-            accessibilityLabel={config.label}>
-            <Text style={[styles.badgeText, { color: config.badgeText }]}>
-              {config.label}
-            </Text>
-          </View>
-
-          {/* Categoria (primária) */}
-          <Text style={styles.category} numberOfLines={1}>
-            {transaction.category}
-          </Text>
-
-          {/* Descrição (secundária, só se existir) */}
-          {transaction.description ? (
-            <Text style={styles.description} numberOfLines={1}>
-              {transaction.description}
-            </Text>
-          ) : null}
-
-          {/* Data */}
-          <Text style={styles.date}>{formattedDate}</Text>
-        </View>
-
-        {/* Valor */}
-        <Text style={[styles.amount, { color: config.amountColor }]}>
-          {config.amountPrefix}
-          {formattedAmount}
+      {/* Primary row: category title + amount */}
+      <View style={styles.primaryRow}>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
         </Text>
-      </Pressable>
+        <Text
+          style={[styles.amount, { color: meta.amountColor }]}
+          numberOfLines={1}
+        >
+          {meta.amountPrefix}{formattedAmount}
+        </Text>
+      </View>
 
-      {/* Botão de exclusão: receptor independente */}
-      {onDelete ? (
-        <Pressable
-          style={({ pressed }) => [styles.deleteButton, pressed ? styles.deleteButtonPressed : null]}
-          onPress={() => onDelete(transaction)}
-          accessibilityRole="button"
-          accessibilityLabel={`Excluir transação: ${transaction.description || transaction.category}`}>
-          <Text style={styles.deleteIcon}>🗑</Text>
-        </Pressable>
+      {/* Optional description */}
+      {subtitle ? (
+        <Text style={styles.description} numberOfLines={1}>
+          {subtitle}
+        </Text>
       ) : null}
+
+      {/* Footer: type label + date + actions */}
+      <View style={styles.footerRow}>
+        <Text style={styles.typeLabel}>{meta.label}</Text>
+        <Text style={styles.dot}>·</Text>
+        <Text style={styles.date}>{formattedDate}</Text>
+
+        {(onPress || onDelete) ? (
+          <View style={styles.actions}>
+            {onPress ? (
+              <ActionIconButton
+                icon="create-outline"
+                onPress={() => onPress(transaction)}
+                accessibilityLabel={`Editar transação: ${subtitle || title}`}
+                color={colors.textMuted}
+                pressedColor={actionPressedColor}
+              />
+            ) : null}
+            {onDelete ? (
+              <ActionIconButton
+                icon="trash-outline"
+                onPress={() => onDelete(transaction)}
+                accessibilityLabel={`Excluir transação: ${subtitle || title}`}
+                color={DESTRUCTIVE_COLOR}
+                pressedColor={actionPressedColor}
+              />
+            ) : null}
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
+function createStyles(colors: ThemeColors, variant: 'card' | 'embedded') {
+  const isCard = variant === 'card';
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
+  return StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 3,
+      ...(isCard
+        ? {
+          borderRadius: 4,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        }
+        : {}),
+    },
+    primaryRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    title: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text,
+      letterSpacing: -0.1,
+    },
+    amount: {
+      fontSize: 15,
+      fontWeight: '600',
+      letterSpacing: -0.3,
+      fontVariant: ['tabular-nums'],
+      flexShrink: 0,
+    },
+    description: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 17,
+    },
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+      gap: 5,
+    },
+    typeLabel: {
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    dot: {
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    date: {
+      fontSize: 12,
+      color: colors.textMuted,
+      flex: 1,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 0,
+      flexShrink: 0,
+    },
+  });
+}
+
+const actionStyles = StyleSheet.create({
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
-  },
-  body: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  bodyPressed: {
-    backgroundColor: '#f3f4f6',
-  },
-  info: {
-    flex: 1,
-    marginRight: 12,
-    gap: 2,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 2,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  category: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  description: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  date: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginTop: 1,
-  },
-  amount: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  deleteButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteButtonPressed: {
-    opacity: 0.5,
-  },
-  deleteIcon: {
-    fontSize: 16,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -9,16 +9,12 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/src/shared/hooks/use-color-scheme';
 
 import type { TransactionType } from '../types/transaction';
 import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 import type { TransactionFilter } from '../types/transaction-filter';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /** Aceita DD/MM/AAAA e devolve Date ou null se inválido. */
 function parseDateInput(value: string): Date | null {
@@ -40,9 +36,159 @@ function isFilterActive(filter: TransactionFilter): boolean {
   return filter.type !== null || filter.category !== null || filter.dateRange !== null;
 }
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+const EXPENSE_CATEGORIES = [
+  'Alimentação',
+  'Transporte',
+  'Moradia',
+  'Lazer',
+  'Saúde',
+  'Outros',
+] as const;
+
+// Estilos estáticos declarados fora do componente para evitar recriação a cada render.
+const dropdownStyles = StyleSheet.create({
+  trigger: {
+    height: 40,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+  },
+  triggerText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  arrow: {
+    fontSize: 10,
+    marginLeft: 6,
+  },
+  list: {
+    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    overflow: 'hidden',
+  },
+  option: {
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  optionBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  optionText: {
+    fontSize: 14,
+  },
+  checkmark: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+});
+
+interface DropdownSelectProps {
+  options: readonly string[];
+  value: string;
+  placeholder: string;
+  open: boolean;
+  colors: ThemeColors;
+  surface: string;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}
+
+function DropdownSelect({
+  options,
+  value,
+  placeholder,
+  open,
+  colors,
+  surface,
+  onToggle,
+  onChange,
+}: DropdownSelectProps) {
+  return (
+    <View>
+      <Pressable
+        onPress={onToggle}
+        style={[
+          dropdownStyles.trigger,
+          {
+            borderColor: colors.border,
+            borderTopLeftRadius: 8,
+            borderTopRightRadius: 8,
+            borderBottomLeftRadius: open ? 0 : 8,
+            borderBottomRightRadius: open ? 0 : 8,
+            borderBottomWidth: open ? 0 : 1,
+            backgroundColor: surface,
+          },
+        ]}
+        accessibilityRole="combobox"
+        accessibilityLabel={value || placeholder}
+        accessibilityState={{ expanded: open }}>
+        <Text
+          style={[dropdownStyles.triggerText, { color: value ? colors.text : colors.icon }]}
+          numberOfLines={1}>
+          {value || placeholder}
+        </Text>
+        <Text style={[dropdownStyles.arrow, { color: colors.icon }]}>
+          {open ? '▲' : '▼'}
+        </Text>
+      </Pressable>
+
+      {open ? (
+        <View
+          style={[
+            dropdownStyles.list,
+            {
+              borderColor: colors.border,
+              borderTopColor: colors.divider,
+              backgroundColor: surface,
+            },
+          ]}>
+          {options.map((option, index) => {
+            const isSelected = value === option;
+            const isLast = index === options.length - 1;
+            return (
+              <Pressable
+                key={option}
+                onPress={() => onChange(option)}
+                style={[
+                  dropdownStyles.option,
+                  !isLast && [
+                    dropdownStyles.optionBorder,
+                    { borderBottomColor: colors.divider },
+                  ],
+                  { backgroundColor: isSelected ? colors.tint + '18' : surface },
+                ]}
+                accessibilityRole="menuitem"
+                accessibilityLabel={option}
+                accessibilityState={{ selected: isSelected }}>
+                <Text
+                  style={[
+                    dropdownStyles.optionText,
+                    {
+                      color: isSelected ? colors.tint : colors.text,
+                      fontWeight: isSelected ? '600' : '400',
+                    },
+                  ]}>
+                  {option}
+                </Text>
+                {isSelected ? (
+                  <Text style={[dropdownStyles.checkmark, { color: colors.tint }]}>✓</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 interface TransactionFilterBarProps {
   filter: TransactionFilter;
@@ -50,20 +196,6 @@ interface TransactionFilterBarProps {
   onClear: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Barra de filtros para a lista de transações.
- *
- * Filtros suportados:
- *   - type: segmented control (Todos / Receita / Despesa / Investimento)
- *   - category:
- *       - quando type === 'investment': chips de seleção usando INVESTMENT_CATEGORIES
- *       - nos demais casos: TextInput livre (comparação exata no Firestore)
- *   - dateRange: dois campos DD/MM/AAAA com validação
- */
 export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFilterBarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -77,15 +209,17 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
     filter.dateRange ? dateToInput(filter.dateRange.end) : '',
   );
   const [dateError, setDateError] = useState<string | null>(null);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
-  // Quando o tipo muda para/de 'investment', limpa a categoria
-  // para evitar enviar uma categoria inválida para o outro modo.
   function handleTypeChange(type: TransactionType | null) {
     if (type !== localType) {
       setLocalCategory('');
+      setCategoryDropdownOpen(false);
     }
     setLocalType(type);
   }
+
+  const categoryOptions: readonly string[] = EXPENSE_CATEGORIES;
 
   function handleApply() {
     setDateError(null);
@@ -123,17 +257,16 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
     setLocalDateStart('');
     setLocalDateEnd('');
     setDateError(null);
+    setCategoryDropdownOpen(false);
     onClear();
   }
 
   const active = isFilterActive(filter);
-  const s = makeStyles(colors);
+  const s = useMemo(() => makeStyles(colors), [colors]);
+  const surface = colors.surface;
 
   return (
     <View style={s.container}>
-      {/* ------------------------------------------------------------------ */}
-      {/* Tipo                                                                */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Tipo</Text>
         <View style={s.segmentRow}>
@@ -147,8 +280,9 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
               Todos
             </Text>
           </Pressable>
+          <View style={s.segmentDivider} />
           <Pressable
-            style={[s.segment, localType === 'income' && s.segmentIncome]}
+            style={[s.segment, localType === 'income' && s.segmentSelected]}
             onPress={() => handleTypeChange(localType === 'income' ? null : 'income')}
             accessibilityRole="button"
             accessibilityLabel="Receita"
@@ -157,8 +291,9 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
               Receita
             </Text>
           </Pressable>
+          <View style={s.segmentDivider} />
           <Pressable
-            style={[s.segment, localType === 'expense' && s.segmentExpense]}
+            style={[s.segment, localType === 'expense' && s.segmentSelected]}
             onPress={() => handleTypeChange(localType === 'expense' ? null : 'expense')}
             accessibilityRole="button"
             accessibilityLabel="Despesa"
@@ -167,8 +302,9 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
               Despesa
             </Text>
           </Pressable>
+          <View style={s.segmentDivider} />
           <Pressable
-            style={[s.segment, localType === 'investment' && s.segmentInvestment]}
+            style={[s.segment, localType === 'investment' && s.segmentSelected]}
             onPress={() =>
               handleTypeChange(localType === 'investment' ? null : 'investment')
             }
@@ -180,20 +316,16 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
                 s.segmentText,
                 localType === 'investment' && s.segmentTextSelected,
               ]}>
-              Investimento
+              Invest.
             </Text>
           </Pressable>
         </View>
       </View>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Categoria                                                           */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Categoria</Text>
 
         {localType === 'investment' ? (
-          /* Chips de seleção para investimentos */
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -217,23 +349,22 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
             })}
           </ScrollView>
         ) : (
-          /* TextInput livre para income/expense/todos */
-          <TextInput
-            style={s.input}
+          <DropdownSelect
+            options={categoryOptions}
             value={localCategory}
-            onChangeText={setLocalCategory}
-            placeholder="Filtrar por categoria exata"
-            placeholderTextColor={colors.icon}
-            autoCapitalize="sentences"
-            returnKeyType="done"
-            accessibilityLabel="Filtro por categoria"
+            placeholder="Filtrar por categoria"
+            open={categoryDropdownOpen}
+            colors={colors}
+            surface={surface}
+            onToggle={() => setCategoryDropdownOpen((prev) => !prev)}
+            onChange={(val) => {
+              setLocalCategory(localCategory === val ? '' : val);
+              setCategoryDropdownOpen(false);
+            }}
           />
         )}
       </View>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Período                                                             */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Período</Text>
         <View style={s.dateRow}>
@@ -271,9 +402,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
         ) : null}
       </View>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Ações                                                               */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.actions}>
         <TouchableOpacity
           style={[s.btnApply, { backgroundColor: colors.tint }]}
@@ -297,70 +425,56 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-function makeStyles(colors: (typeof Colors)['light']) {
+function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.background,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: '#e5e7eb',
-      gap: 10,
+      borderBottomColor: colors.border,
+      gap: 14,
     },
     fieldWrapper: {
-      gap: 4,
+      gap: 6,
     },
     label: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
-      color: colors.icon,
+      color: colors.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.6,
     },
     segmentRow: {
       flexDirection: 'row',
-      gap: 6,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 6,
+      overflow: 'hidden',
     },
     segment: {
       flex: 1,
       height: 36,
-      borderWidth: 1,
-      borderColor: '#d1d5db',
-      borderRadius: 6,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     segmentSelected: {
-      borderColor: colors.tint,
-      backgroundColor: colors.tint + '18',
+      backgroundColor: colors.tint,
     },
-    segmentIncome: {
-      borderColor: '#16a34a',
-      backgroundColor: '#dcfce7',
-    },
-    segmentExpense: {
-      borderColor: '#dc2626',
-      backgroundColor: '#fee2e2',
-    },
-    segmentInvestment: {
-      borderColor: '#2563eb',
-      backgroundColor: '#eff6ff',
+    segmentDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
     },
     segmentText: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '500',
-      color: colors.icon,
+      color: colors.textMuted,
     },
     segmentTextSelected: {
-      color: colors.text,
-      fontWeight: '700',
+      color: '#ffffff',
+      fontWeight: '600',
     },
-    // Chips de categoria (investimento)
     chipsRow: {
       flexDirection: 'row',
       gap: 8,
@@ -368,37 +482,25 @@ function makeStyles(colors: (typeof Colors)['light']) {
     },
     chip: {
       paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: '#d1d5db',
-      backgroundColor: colors.background,
+      paddingVertical: 7,
+      borderRadius: 4,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
     chipSelected: {
-      borderColor: '#2563eb',
-      backgroundColor: '#eff6ff',
+      borderColor: colors.tint,
+      backgroundColor: colors.tint + '15',
     },
     chipText: {
       fontSize: 13,
-      fontWeight: '500',
-      color: colors.icon,
+      fontWeight: '400',
+      color: colors.textSecondary,
     },
     chipTextSelected: {
-      color: '#1d4ed8',
-      fontWeight: '700',
+      color: colors.tint,
+      fontWeight: '600',
     },
-    // TextInput categoria livre
-    input: {
-      height: 40,
-      borderWidth: 1,
-      borderColor: '#d1d5db',
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      fontSize: 14,
-      color: colors.text,
-      backgroundColor: colors.background,
-    },
-    // Campos de data
     dateRow: {
       flexDirection: 'row',
       gap: 8,
@@ -406,44 +508,43 @@ function makeStyles(colors: (typeof Colors)['light']) {
     inputHalf: {
       flex: 1,
       height: 40,
-      borderWidth: 1,
-      borderColor: '#d1d5db',
-      borderRadius: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 6,
       paddingHorizontal: 10,
       fontSize: 14,
       color: colors.text,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     inputError: {
-      borderColor: '#ef4444',
+      borderColor: colors.negative,
     },
     fieldError: {
       fontSize: 12,
-      color: '#ef4444',
+      color: colors.negative,
     },
-    // Botões
     actions: {
       flexDirection: 'row',
       gap: 8,
       alignItems: 'center',
     },
     btnApply: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 8,
+      paddingHorizontal: 20,
+      paddingVertical: 9,
+      borderRadius: 6,
     },
     btnApplyText: {
       color: '#fff',
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
     },
     btnClear: {
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 9,
     },
     btnClearText: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '500',
     },
   });
 }

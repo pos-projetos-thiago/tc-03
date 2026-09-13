@@ -1,71 +1,103 @@
-# Welcome to your Expo app 👋
+# ByteBank — Gerenciamento Financeiro Pessoal
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicação mobile de gerenciamento financeiro desenvolvida com React Native, Expo e Firebase como parte do Tech Challenge — Fase 3 da pós-graduação PosTech FIAP.
 
-## Get started
+## Funcionalidades
 
-1. Install dependencies
+- Autenticação de usuários via Firebase Authentication
+- Dashboard com visão geral do saldo, patrimônio e investimentos do mês
+- Gráficos de movimentação mensal e distribuição da carteira de investimentos
+- Listagem de transações com filtros por tipo, categoria e período
+- Scroll infinito com paginação via Cloud Firestore
+- Cadastro e edição de transações (depósito, saque, investimento)
+- Upload de recibos e documentos para Firebase Storage
+- Importação de dados de transação via análise de documento por IA (Firebase AI Logic / Gemini)
+- Suporte a tema claro e escuro
 
-   ```bash
-   npm install
-   ```
+## Pré-requisitos
 
-2. Start the app
+- Node.js 18 ou superior
+- npm ou yarn
+- Expo CLI (`npm install -g expo-cli`)
+- Aplicativo Expo Go instalado no dispositivo (iOS ou Android)
+- Conta no [Firebase Console](https://console.firebase.google.com)
 
-   ```bash
-   npx expo start --tunnel
-   ```
+## Configuração do Firebase
 
-> **Nota para teste no iPhone via Expo Go (rede LAN):** em algumas configurações de rede, o modo LAN pode não funcionar no Expo Go mesmo que o iPhone consiga acessar a URL pelo navegador. Se o Expo Go exibir "the internet connection appears to be offline", use o modo Tunnel:
-> ```bash
-> npx expo start --clear --tunnel
-> ```
+1. Crie um projeto no [Firebase Console](https://console.firebase.google.com).
+2. Ative os seguintes serviços:
+   - **Authentication** — habilite o provedor Email/Senha
+   - **Cloud Firestore** — crie o banco em modo de produção ou teste
+   - **Storage** — crie o bucket padrão
+   - **AI Logic** (Firebase Vertex AI / Gemini) — necessário para o recurso de importação por IA
+3. Registre um app Web no projeto Firebase e copie as credenciais geradas.
 
-In the output, you'll find options to open the app in a
+## Variáveis de ambiente
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Crie um arquivo `.env` na raiz do projeto com base no `.env.example`:
 
 ```bash
-npm run reset-project
+cp .env.example .env
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Preencha com as credenciais do seu projeto Firebase:
 
-## Funcionalidades validadas
+```env
+EXPO_PUBLIC_FIREBASE_API_KEY=...
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+EXPO_PUBLIC_FIREBASE_APP_ID=...
+```
 
-### Importação de transação por IA (Gemini)
+## Instalação
 
-**Status:** ✅ Validado em produção (iPhone físico, Expo Go, agosto/2026)
+```bash
+npm install
+```
 
-O fluxo de importação de transação via IA foi testado com sucesso no iPhone físico com Expo Go, usando `npx expo start --clear --tunnel`:
+## Executando o projeto
 
-- Arquivo TXT anexado com conteúdo `depositar 10 reais na conta`
-- Gemini (modelo `gemini-3.5-flash-lite` via Firebase AI Logic / `GoogleAIBackend`) processou corretamente
-- Os campos do formulário foram preenchidos automaticamente
-- Nenhum erro de `AbortSignal.any`, `content://` / `expo-file-system` ou rate limiting (429)
+```bash
+npx expo start --clear --tunnel
+```
 
-**Polyfill necessário para Hermes (React Native 0.81 / Expo SDK 54):**
-O Firebase AI Logic usa `AbortSignal.any()` internamente. O runtime Hermes do Expo SDK 54 / React Native 0.81 não implementa esse método. O arquivo `src/polyfills/abort-signal-any.ts` provê a implementação e é carregado como primeiro import em `app/_layout.tsx`.
+O modo `--tunnel` é recomendado para garantir que dispositivos físicos com Expo Go consigam se conectar independente da configuração de rede local.
 
-## Learn more
+Após o servidor iniciar, escaneie o QR code exibido no terminal com o aplicativo Expo Go.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Observação sobre o polyfill de AbortSignal
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+O runtime Hermes (React Native 0.81 / Expo SDK 54) não implementa `AbortSignal.any()`, método utilizado internamente pelo Firebase AI Logic. O arquivo `src/polyfills/abort-signal-any.ts` fornece essa implementação e é carregado como primeiro import em `app/_layout.tsx`. Sem ele, o recurso de importação por IA falharia silenciosamente em dispositivos físicos.
 
-## Join the community
+## Estrutura do projeto
 
-Join our community of developers creating universal apps.
+```
+app/                    # Rotas (Expo Router — file-based routing)
+  (auth)/               # Telas de autenticação
+  (tabs)/               # Telas principais (Dashboard, Transações)
+  transactions/         # Telas de criação e edição de transação
+src/
+  features/
+    auth/               # Contexto, serviços e componentes de autenticação
+    dashboard/          # Dashboard, gráficos e serviço de resumo financeiro
+    receipts/           # Upload de recibos e extração via IA
+    transactions/       # Listagem, formulário, filtros e serviço de transações
+  lib/
+    firebase/           # Configuração e serviços do Firebase
+  shared/               # Componentes, hooks e utilitários compartilhados
+constants/
+  theme.ts              # Tokens de cor e tipografia (tema claro e escuro)
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Tecnologias
+
+- [React Native](https://reactnative.dev) + [Expo SDK 54](https://expo.dev)
+- [Expo Router](https://expo.github.io/router) — navegação baseada em arquivos
+- [Firebase Authentication](https://firebase.google.com/docs/auth)
+- [Cloud Firestore](https://firebase.google.com/docs/firestore)
+- [Firebase Storage](https://firebase.google.com/docs/storage)
+- [Firebase AI Logic](https://firebase.google.com/docs/ai-logic) (Gemini)
+- [expo-skia-charts](https://github.com/alexsuarezm/expo-skia-charts) — gráficos donut
+- [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated) + [Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler)

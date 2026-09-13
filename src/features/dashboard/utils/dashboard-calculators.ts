@@ -1,10 +1,6 @@
 import type { Transaction, TransactionType } from '@/src/features/transactions/types/transaction';
 import type { CategoryBreakdown } from '../types/dashboard-summary';
 
-// ---------------------------------------------------------------------------
-// Totals
-// ---------------------------------------------------------------------------
-
 /** Soma os valores de todas as transações do tipo especificado. */
 export function sumByType(
   transactions: Transaction[],
@@ -16,8 +12,8 @@ export function sumByType(
 }
 
 /**
- * Saldo disponível em conta: income - expense - investment (histórico completo).
- * Investimentos reduzem o disponível mas não o patrimônio.
+ * Saldo disponível: income - expense - investment (histórico completo).
+ * Investimentos reduzem o saldo disponível mas não o patrimônio.
  */
 export function calculateBalance(allTransactions: Transaction[]): number {
   return (
@@ -28,19 +24,15 @@ export function calculateBalance(allTransactions: Transaction[]): number {
 }
 
 /**
- * Patrimônio líquido: saldo disponível + total investido = income - expense.
- * Investimentos são neutros para o patrimônio (realocação, não gasto).
+ * Patrimônio líquido: income - expense.
+ * Investimentos são neutros — representam realocação, não gasto.
  */
 export function calculateNetWorth(allTransactions: Transaction[]): number {
   return sumByType(allTransactions, 'income') - sumByType(allTransactions, 'expense');
 }
 
-// ---------------------------------------------------------------------------
-// Category breakdown
-// ---------------------------------------------------------------------------
-
 /**
- * Agrupa transações por categoria e calcula o total e percentual de cada uma.
+ * Agrupa transações por categoria e calcula total e percentual de cada uma.
  * O percentual é relativo ao total geral do conjunto recebido.
  */
 export function buildCategoryBreakdown(transactions: Transaction[]): CategoryBreakdown[] {
@@ -60,25 +52,15 @@ export function buildCategoryBreakdown(transactions: Transaction[]): CategoryBre
       total,
       percentage: grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0,
     }))
-    .sort((a, b) => b.total - a.total); // maior primeiro
+    .sort((a, b) => b.total - a.total);
 }
 
-// ---------------------------------------------------------------------------
-// Date helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Retorna o primeiro instante do mês (UTC) para uma data de referência.
- * Usado como `start` do filtro de dateRange.
- */
+/** Retorna o primeiro instante do mês (UTC) para uma data de referência. */
 export function startOfMonth(ref: Date): Date {
   return new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), 1, 0, 0, 0, 0));
 }
 
-/**
- * Retorna o último instante do mês (UTC) para uma data de referência.
- * Usado como `end` do filtro de dateRange.
- */
+/** Retorna o último instante do mês (UTC) para uma data de referência. */
 export function endOfMonth(ref: Date): Date {
   return new Date(
     Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 0, 23, 59, 59, 999),

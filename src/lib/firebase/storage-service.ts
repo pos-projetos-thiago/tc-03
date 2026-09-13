@@ -2,18 +2,15 @@ import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from './storage';
 
 /**
- * Faz o upload de um arquivo local (URI) para o Firebase Storage.
+ * Faz upload de um arquivo local para o Firebase Storage.
  *
- * Caminho no bucket:
- *   receipts/{userId}/{transactionId}/{timestamp}.{ext}
+ * Caminho no bucket: receipts/{userId}/{transactionId}/{timestamp}.{ext}
  *
- * @param userId         ID do usuário autenticado — isola os arquivos por usuário.
- * @param transactionId  ID da transação — pode ser o ID definitivo (edição)
- *                       ou um ID temporário gerado antes do save (criação).
- * @param uri            URI local do arquivo (retornada pelo picker).
+ * @param userId         ID do usuário autenticado.
+ * @param transactionId  ID da transação (definitivo em edição, temporário em criação).
+ * @param uri            URI local do arquivo retornada pelo picker.
  * @param mimeType       MIME type do arquivo (ex: "image/jpeg", "application/pdf").
- *                       Preservado como Content-Type no objeto do Storage.
- * @param onProgress     Callback opcional com % de progresso (0–100).
+ * @param onProgress     Callback opcional com percentual de progresso (0–100).
  * @returns              URL pública do arquivo após o upload.
  */
 export async function uploadAttachment(
@@ -23,18 +20,15 @@ export async function uploadAttachment(
   mimeType: string,
   onProgress?: (progress: number) => void,
 ): Promise<string> {
-  // Extrai a extensão do arquivo da URI (fallback baseado no mimeType)
   const extFromUri = uri.split('.').pop()?.split('?')[0] ?? '';
   const ext = extFromUri || mimeTypeToExt(mimeType);
   const path = `receipts/${userId}/${transactionId}/${Date.now()}.${ext}`;
 
-  // Converte a URI local em Blob via fetch nativo do React Native
   const response = await fetch(uri);
   const blob = await response.blob();
 
   const storageRef = ref(storage, path);
 
-  // Preserva o Content-Type correto no objeto armazenado
   const uploadTask = uploadBytesResumable(storageRef, blob, {
     contentType: mimeType,
   });
@@ -62,9 +56,6 @@ export async function uploadAttachment(
 }
 
 /**
- * Alias de compatibilidade — mantém código existente funcionando.
- * Delega para uploadAttachment com mimeType padrão de imagem.
- *
  * @deprecated Usar uploadAttachment com mimeType explícito.
  */
 export async function uploadReceipt(
@@ -77,18 +68,10 @@ export async function uploadReceipt(
 }
 
 /**
- * Obtém a URL de download de um arquivo já armazenado no Firebase Storage
- * a partir da sua URL pública (download URL).
- *
- * A URL retornada pelo Storage já é a download URL — esta função é útil
- * para renovar tokens expirados ou obter a URL a partir de um storage path.
- *
- * @param storagePath  Caminho completo no bucket (ex: "receipts/uid/tid/file.pdf").
- *                     Se a URL completa do Storage for passada, extrai o path automaticamente.
- * @returns            URL de download renovada.
+ * Obtém a URL de download de um arquivo armazenado no Firebase Storage.
+ * Aceita tanto um storage path limpo quanto uma URL completa do Storage.
  */
 export async function getAttachmentDownloadUrl(storagePath: string): Promise<string> {
-  // Aceita tanto um path limpo quanto uma URL completa do Firebase Storage
   const path = storagePath.startsWith('https://')
     ? extractStoragePath(storagePath)
     : storagePath;
@@ -96,10 +79,6 @@ export async function getAttachmentDownloadUrl(storagePath: string): Promise<str
   const storageRef = ref(storage, path);
   return getDownloadURL(storageRef);
 }
-
-// ---------------------------------------------------------------------------
-// Helpers internos
-// ---------------------------------------------------------------------------
 
 /** Mapeia MIME type para extensão de arquivo. */
 function mimeTypeToExt(mimeType: string): string {
@@ -116,19 +95,17 @@ function mimeTypeToExt(mimeType: string): string {
 
 /**
  * Extrai o storage path de uma URL de download do Firebase Storage.
- * Ex: "https://firebasestorage.googleapis.com/v0/b/bucket/o/receipts%2F..."
- *     → "receipts/..."
+ * Ex: "https://firebasestorage.googleapis.com/v0/b/bucket/o/receipts%2F..." → "receipts/..."
  */
 function extractStoragePath(url: string): string {
   try {
     const urlObj = new URL(url);
-    // O path do objeto fica após "/o/" na URL do Storage
     const match = urlObj.pathname.match(/\/o\/(.+)$/);
     if (match?.[1]) {
       return decodeURIComponent(match[1]);
     }
   } catch {
-    // Ignora erro de parse — retorna a string original
+    // parse error — retorna a string original
   }
   return url;
 }
