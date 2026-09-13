@@ -69,7 +69,7 @@ Após o servidor iniciar, escaneie o QR code exibido no terminal com o aplicativ
 
 ## Observação sobre o polyfill de AbortSignal
 
-O runtime Hermes (React Native 0.81 / Expo SDK 54) não implementa `AbortSignal.any()`, método utilizado internamente pelo Firebase AI Logic. O arquivo `src/polyfills/abort-signal-any.ts` fornece essa implementação e é carregado como primeiro import em `app/_layout.tsx`. Sem ele, o recurso de importação por IA falharia silenciosamente em dispositivos físicos.
+O runtime Hermes (React Native 0.81 / Expo SDK 57) não implementa `AbortSignal.any()`, método utilizado internamente pelo Firebase AI Logic. O arquivo `src/polyfills/abort-signal-any.ts` fornece essa implementação e é carregado como primeiro import em `app/_layout.tsx`. Sem ele, o recurso de importação por IA falharia silenciosamente em dispositivos físicos.
 
 ## Estrutura do projeto
 
@@ -93,7 +93,7 @@ constants/
 
 ## Tecnologias
 
-- [React Native](https://reactnative.dev) + [Expo SDK 54](https://expo.dev)
+- [React Native](https://reactnative.dev) + [Expo SDK 57](https://expo.dev)
 - [Expo Router](https://expo.github.io/router) — navegação baseada em arquivos
 - [Firebase Authentication](https://firebase.google.com/docs/auth)
 - [Cloud Firestore](https://firebase.google.com/docs/firestore)
