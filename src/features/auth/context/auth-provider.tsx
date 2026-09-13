@@ -13,10 +13,6 @@ import {
 import type { User } from '../types/user';
 import { AuthContext } from './auth-context';
 
-// ---------------------------------------------------------------------------
-// State & Reducer
-// ---------------------------------------------------------------------------
-
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -46,13 +42,9 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 
 const initialState: AuthState = {
   user: null,
-  isLoading: true, // começa true: aguardando resolução do estado persistido pelo Firebase
+  isLoading: true,
   error: null,
 };
-
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -61,7 +53,6 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Assina as mudanças de estado do Firebase na montagem
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChanged((user) => {
       dispatch({ type: 'SET_USER', payload: user });
@@ -81,7 +72,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       await authService.signIn(email, password);
-      // onAuthStateChanged cuida de atualizar o user no estado
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: mapFirebaseError(err) });
     }
@@ -99,16 +89,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const user = await authService.signUp(email, password, name);
-      // onAuthStateChanged dispara antes do updateProfile completar, então
-      // o displayName chega null pelo listener. Corrige com o retorno do
-      // signUp, que já contém o nome após updateProfile + reload.
       dispatch({ type: 'SET_USER', payload: user });
-      // Cria a transação de saldo inicial para o novo usuário.
-      // Executado em background — não bloqueia o login em caso de falha.
-      transactionService.seedInitialBalance(user.id).catch(() => {
-        // Falha silenciosa: o usuário já está autenticado e pode usar o app.
-        // O saldo inicial pode ser adicionado manualmente se necessário.
-      });
+      // Seed do saldo inicial em background — não bloqueia o login em caso de falha.
+      transactionService.seedInitialBalance(user.id).catch(() => undefined);
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: mapFirebaseError(err) });
     }
@@ -221,13 +204,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /**
  * Mapeia códigos de erro do Firebase para mensagens legíveis em português.
- * Adicione novos códigos conforme necessário.
  */
 function isPasswordResetEnumerationError(err: unknown): boolean {
   if (typeof err === 'object' && err !== null && 'code' in err) {

@@ -10,19 +10,11 @@ import {
   sumByType,
 } from '../utils/dashboard-calculators';
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const RECENT_COUNT = 5;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /**
- * Busca todas as páginas de um filtro usando o cursor do transactionService.
- * Necessário para cálculos de totais que não podem depender do PAGE_SIZE fixo.
+ * Busca todas as páginas de transações para um filtro, acumulando via cursor.
+ * Necessário para calcular totais que não dependem do PAGE_SIZE fixo.
  */
 async function fetchAllPages(
   userId: string,
@@ -40,24 +32,16 @@ async function fetchAllPages(
   return all;
 }
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
-
 /**
  * Calcula o resumo financeiro do dashboard para o mês de referência.
  *
- * Estratégia de consulta (3 buscas em paralelo):
- *   1. Transações de conta corrente do mês (income + expense via filtro de data)
- *   2. Investimentos do mês (investment via filtro de data + type)
- *   3. Todo o histórico (para saldo disponível e patrimônio all-time)
+ * Faz duas buscas em paralelo:
+ *   1. Transações do mês atual (para totais e recentes do período)
+ *   2. Histórico completo (para saldo disponível e patrimônio all-time)
  *
- * Não acessa o Firestore diretamente — delega ao transactionService,
- * preservando a substituibilidade planejada para a Fase 4.
- *
- * Semântica financeira:
- *   balance  = income(all) - expense(all) - investment(all)  → saldo disponível
- *   netWorth = income(all) - expense(all)                    → patrimônio total
+ * Semântica:
+ *   balance  = income(all) - expense(all) - investment(all)
+ *   netWorth = income(all) - expense(all)
  */
 async function getSummary(
   userId: string,
@@ -68,13 +52,11 @@ async function getSummary(
 
   const dateRange = { start: monthStart, end: monthEnd };
 
-  // Busca paralela: todas as transações do mês + histórico completo
   const [monthTransactions, allTransactions] = await Promise.all([
     fetchAllPages(userId, { type: null, category: null, dateRange }),
     fetchAllPages(userId, { type: null, category: null, dateRange: null }),
   ]);
 
-  // Separa conta corrente de investimentos dentro do mês
   const monthCurrentAccount = monthTransactions.filter((t) => t.type !== 'investment');
   const monthInvestments = monthTransactions.filter((t) => t.type === 'investment');
 

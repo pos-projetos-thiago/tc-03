@@ -16,10 +16,6 @@ import type { TransactionType } from '../types/transaction';
 import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 import type { TransactionFilter } from '../types/transaction-filter';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /** Aceita DD/MM/AAAA e devolve Date ou null se inválido. */
 function parseDateInput(value: string): Date | null {
   const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -40,10 +36,6 @@ function isFilterActive(filter: TransactionFilter): boolean {
   return filter.type !== null || filter.category !== null || filter.dateRange !== null;
 }
 
-// ---------------------------------------------------------------------------
-// Category options
-// ---------------------------------------------------------------------------
-
 const EXPENSE_CATEGORIES = [
   'Alimentação',
   'Transporte',
@@ -53,10 +45,7 @@ const EXPENSE_CATEGORIES = [
   'Outros',
 ] as const;
 
-// ---------------------------------------------------------------------------
-// DropdownSelect — estilos estáticos fora do componente (React Compiler safe)
-// ---------------------------------------------------------------------------
-
+// Estilos estáticos declarados fora do componente para evitar recriação a cada render.
 const dropdownStyles = StyleSheet.create({
   trigger: {
     height: 40,
@@ -124,7 +113,6 @@ function DropdownSelect({
 }: DropdownSelectProps) {
   return (
     <View>
-      {/* Trigger */}
       <Pressable
         onPress={onToggle}
         style={[
@@ -152,7 +140,6 @@ function DropdownSelect({
         </Text>
       </Pressable>
 
-      {/* Lista */}
       {open ? (
         <View
           style={[
@@ -203,30 +190,12 @@ function DropdownSelect({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface TransactionFilterBarProps {
   filter: TransactionFilter;
   onApply: (filter: TransactionFilter) => void;
   onClear: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Barra de filtros para a lista de transações.
- *
- * Filtros suportados:
- *   - type: segmented control (Todos / Receita / Despesa / Investimento)
- *   - category:
- *       - quando type === 'investment': chips de seleção usando INVESTMENT_CATEGORIES
- *       - nos demais casos: dropdown colapsável com opções por tipo
- *   - dateRange: dois campos DD/MM/AAAA com validação
- */
 export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFilterBarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -242,7 +211,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
   const [dateError, setDateError] = useState<string | null>(null);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
-  // Quando o tipo muda, limpa a categoria e fecha o dropdown
   function handleTypeChange(type: TransactionType | null) {
     if (type !== localType) {
       setLocalCategory('');
@@ -251,8 +219,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
     setLocalType(type);
   }
 
-  // Opções do dropdown — sempre as categorias de despesa/gasto,
-  // que cobrem os casos de uso do filtro para income, expense e "Todos".
   const categoryOptions: readonly string[] = EXPENSE_CATEGORIES;
 
   function handleApply() {
@@ -297,15 +263,10 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
 
   const active = isFilterActive(filter);
   const s = useMemo(() => makeStyles(colors), [colors]);
-
-  // surface do tema para o dropdown (igual ao input do filtro)
   const surface = colors.surface;
 
   return (
     <View style={s.container}>
-      {/* ------------------------------------------------------------------ */}
-      {/* Tipo                                                                */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Tipo</Text>
         <View style={s.segmentRow}>
@@ -361,14 +322,10 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
         </View>
       </View>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Categoria                                                           */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Categoria</Text>
 
         {localType === 'investment' ? (
-          /* Chips horizontais para investimento — comportamento original */
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -392,7 +349,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
             })}
           </ScrollView>
         ) : (
-          /* Dropdown colapsável para income, expense e "Todos" */
           <DropdownSelect
             options={categoryOptions}
             value={localCategory}
@@ -402,7 +358,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
             surface={surface}
             onToggle={() => setCategoryDropdownOpen((prev) => !prev)}
             onChange={(val) => {
-              // Toque na opção já selecionada desfaz a seleção
               setLocalCategory(localCategory === val ? '' : val);
               setCategoryDropdownOpen(false);
             }}
@@ -410,9 +365,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
         )}
       </View>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Período                                                             */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.fieldWrapper}>
         <Text style={s.label}>Período</Text>
         <View style={s.dateRow}>
@@ -450,9 +402,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
         ) : null}
       </View>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Ações                                                               */}
-      {/* ------------------------------------------------------------------ */}
       <View style={s.actions}>
         <TouchableOpacity
           style={[s.btnApply, { backgroundColor: colors.tint }]}
@@ -475,10 +424,6 @@ export function TransactionFilterBar({ filter, onApply, onClear }: TransactionFi
     </View>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -530,7 +475,6 @@ function makeStyles(colors: ThemeColors) {
       color: '#ffffff',
       fontWeight: '600',
     },
-    // Chips de categoria (investimento)
     chipsRow: {
       flexDirection: 'row',
       gap: 8,
@@ -557,7 +501,6 @@ function makeStyles(colors: ThemeColors) {
       color: colors.tint,
       fontWeight: '600',
     },
-    // Campos de data
     dateRow: {
       flexDirection: 'row',
       gap: 8,
@@ -580,7 +523,6 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 12,
       color: colors.negative,
     },
-    // Botões
     actions: {
       flexDirection: 'row',
       gap: 8,

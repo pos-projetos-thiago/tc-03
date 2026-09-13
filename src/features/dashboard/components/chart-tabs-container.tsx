@@ -84,7 +84,6 @@ export function ChartTabsContainer({
 
   const [activeTab, setActiveTab] = useState<TabId>('movements');
 
-  // Fade animation for chart content swap
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const switchTab = useCallback(
@@ -104,7 +103,6 @@ export function ChartTabsContainer({
         }),
       ]).start();
 
-      // Switch after fade-out
       setTimeout(() => setActiveTab(id), 110);
     },
     [activeTab, fadeAnim],
@@ -112,7 +110,6 @@ export function ChartTabsContainer({
 
   return (
     <View style={styles.container}>
-      {/* Tab bar */}
       <View style={styles.tabBar}>
         {TABS.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -147,7 +144,6 @@ export function ChartTabsContainer({
         })}
       </View>
 
-      {/* Chart area */}
       <Animated.View style={[styles.chartArea, { opacity: fadeAnim }]}>
         {activeTab === 'movements' ? (
           <MonthlyMovementChart

@@ -18,12 +18,9 @@ interface UseTransactionsResult extends UseTransactionsState {
 }
 
 /**
- * Carrega transações do usuário autenticado com suporte a scroll infinito.
- *
- * - `refresh`: recarrega do início, descartando páginas anteriores.
- * - `loadMore`: carrega a próxima página e acumula aos itens existentes.
- *   Não faz nada se `hasMore` for false ou já houver uma carga em andamento.
- * - Quando o filtro muda, a paginação é resetada automaticamente.
+ * Carrega transações do usuário com suporte a scroll infinito.
+ * `refresh` recarrega do início; `loadMore` acumula a próxima página.
+ * Quando o filtro muda, a paginação é resetada automaticamente.
  */
 export function useTransactions(
   userId: string | null,
@@ -37,22 +34,12 @@ export function useTransactions(
     error: null,
   });
 
-  // Cursor opaco mantido em ref para não entrar em ciclos de dependência
   const cursorRef = useRef<unknown>(undefined);
-
-  // Flag para impedir chamadas simultâneas de loadMore
   const isFetchingRef = useRef(false);
-
-  // Serializa o filtro para dependência estável
   const filterKey = JSON.stringify(filter);
 
-  // ---------------------------------------------------------------------------
-  // Carrega a primeira página (ou recarrega do zero)
-  // ---------------------------------------------------------------------------
   const load = useCallback(async () => {
     if (!userId) return;
-
-    // Previne chamada simultânea
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
@@ -94,9 +81,6 @@ export function useTransactions(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, filterKey]);
 
-  // ---------------------------------------------------------------------------
-  // Carrega a próxima página e acumula
-  // ---------------------------------------------------------------------------
   const loadMore = useCallback(async () => {
     if (!userId) return;
     if (isFetchingRef.current) return;
@@ -127,9 +111,6 @@ export function useTransactions(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, filterKey]);
 
-  // ---------------------------------------------------------------------------
-  // Dispara carga inicial e reseta quando filtro ou userId mudam
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     void load();
   }, [load]);

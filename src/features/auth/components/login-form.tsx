@@ -35,38 +35,28 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldError>({ email: null, password: null });
   const [submitted, setSubmitted] = useState(false);
 
-  // Limpa erro do contexto ao desmontar ou ao usuário começar a digitar
   useEffect(() => {
-    return () => {
-      clearError();
-    };
+    return () => { clearError(); };
   }, [clearError]);
 
   function handleEmailChange(value: string) {
     setEmail(value);
-    if (submitted) {
-      setFieldErrors((prev) => ({ ...prev, email: validateEmail(value) }));
-    }
+    if (submitted) setFieldErrors((prev) => ({ ...prev, email: validateEmail(value) }));
     if (error) clearError();
   }
 
   function handlePasswordChange(value: string) {
     setPassword(value);
-    if (submitted) {
-      setFieldErrors((prev) => ({ ...prev, password: validatePassword(value) }));
-    }
+    if (submitted) setFieldErrors((prev) => ({ ...prev, password: validatePassword(value) }));
     if (error) clearError();
   }
 
   async function handleSubmit() {
     setSubmitted(true);
-
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     setFieldErrors({ email: emailError, password: passwordError });
-
     if (emailError || passwordError) return;
-
     await signIn(email, password);
   }
 
@@ -81,13 +71,11 @@ export function LoginForm() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {/* Cabeçalho */}
         <View style={s.header}>
           <Text style={s.title}>Bem-vindo</Text>
           <Text style={s.subtitle}>Entre na sua conta para continuar</Text>
         </View>
 
-        {/* Erro global do Firebase (retornado pelo AuthProvider) */}
         {!isFirebaseConfigured() ? (
           <View style={s.errorBanner} accessibilityRole="alert" accessibilityLiveRegion="polite">
             <Text style={s.errorBannerText}>
@@ -104,7 +92,6 @@ export function LoginForm() {
           </View>
         ) : null}
 
-        {/* Campo e-mail */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>E-mail</Text>
           <TextInput
@@ -124,13 +111,10 @@ export function LoginForm() {
             editable={!isLoading}
           />
           {fieldErrors.email ? (
-            <Text style={s.fieldError} accessibilityRole="alert">
-              {fieldErrors.email}
-            </Text>
+            <Text style={s.fieldError} accessibilityRole="alert">{fieldErrors.email}</Text>
           ) : null}
         </View>
 
-        {/* Campo senha */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>Senha</Text>
           <View style={[s.inputRow, fieldErrors.password ? s.inputError : null]}>
@@ -153,8 +137,7 @@ export function LoginForm() {
               onPress={() => setShowPassword((v) => !v)}
               style={s.eyeButton}
               accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-            >
+              accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={22}
@@ -163,9 +146,7 @@ export function LoginForm() {
             </Pressable>
           </View>
           {fieldErrors.password ? (
-            <Text style={s.fieldError} accessibilityRole="alert">
-              {fieldErrors.password}
-            </Text>
+            <Text style={s.fieldError} accessibilityRole="alert">{fieldErrors.password}</Text>
           ) : null}
           <Link href="/(auth)/forgot-password" asChild>
             <TouchableOpacity
@@ -180,7 +161,6 @@ export function LoginForm() {
           </Link>
         </View>
 
-        {/* Botão Entrar */}
         <TouchableOpacity
           style={[s.button, isLoading && s.buttonDisabled]}
           onPress={handleSubmit}
@@ -188,14 +168,9 @@ export function LoginForm() {
           accessibilityRole="button"
           accessibilityLabel="Entrar"
           accessibilityState={{ busy: isLoading, disabled: isLoading }}>
-          {isLoading ? (
-            <Text style={s.buttonText}>Entrando…</Text>
-          ) : (
-            <Text style={s.buttonText}>Entrar</Text>
-          )}
+          <Text style={s.buttonText}>{isLoading ? 'Entrando…' : 'Entrar'}</Text>
         </TouchableOpacity>
 
-        {/* Link para cadastro */}
         <View style={s.footer}>
           <Text style={s.footerText}>Não tem uma conta? </Text>
           <Link href="/(auth)/register" asChild>
@@ -212,10 +187,6 @@ export function LoginForm() {
     </KeyboardAvoidingView>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -240,20 +211,21 @@ function makeStyles(colors: ThemeColors) {
     },
     subtitle: {
       fontSize: 15,
-      color: colors.icon,
+      color: colors.textMuted,
     },
     errorBanner: {
-      backgroundColor: '#fef2f2',
-      borderWidth: 1,
-      borderColor: '#fca5a5',
-      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.negative,
+      borderRadius: 4,
       padding: 12,
       marginBottom: 8,
     },
     errorBannerText: {
-      color: '#b91c1c',
-      fontSize: 14,
-      textAlign: 'center',
+      color: colors.negative,
+      fontSize: 13,
     },
     fieldWrapper: {
       gap: 4,
@@ -266,23 +238,23 @@ function makeStyles(colors: ThemeColors) {
     },
     input: {
       height: 48,
-      borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
       borderRadius: 8,
       paddingHorizontal: 12,
       fontSize: 15,
       color: colors.text,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     inputRow: {
       flexDirection: 'row',
       alignItems: 'center',
       height: 48,
-      borderWidth: 1,
-      borderColor: '#d1d5db',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
       borderRadius: 8,
       paddingHorizontal: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     inputFlex: {
       flex: 1,
@@ -290,11 +262,11 @@ function makeStyles(colors: ThemeColors) {
       color: colors.text,
     },
     inputError: {
-      borderColor: '#ef4444',
+      borderColor: colors.negative,
     },
     fieldError: {
       fontSize: 12,
-      color: '#ef4444',
+      color: colors.negative,
     },
     forgotPasswordLink: {
       alignSelf: 'flex-end',
@@ -308,24 +280,21 @@ function makeStyles(colors: ThemeColors) {
     eyeButton: {
       padding: 4,
     },
-    eyeIcon: {
-      fontSize: 18,
-    },
     button: {
       height: 50,
       backgroundColor: colors.tint,
-      borderRadius: 10,
+      borderRadius: 8,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 8,
     },
     buttonDisabled: {
-      opacity: 0.6,
+      opacity: 0.5,
     },
     buttonText: {
       color: '#ffffff',
-      fontSize: 16,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '600',
     },
     footer: {
       flexDirection: 'row',
@@ -335,7 +304,7 @@ function makeStyles(colors: ThemeColors) {
     },
     footerText: {
       fontSize: 14,
-      color: colors.icon,
+      color: colors.textMuted,
     },
     link: {
       fontSize: 14,

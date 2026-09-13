@@ -17,8 +17,6 @@ export const DONUT_CHART_STYLE = {
   hitSlop: 100,
 } as const;
 
-// ─── Center content ──────────────────────────────────────────────────────────
-
 interface ChartCenterContentProps {
   value: number;
   label: string;
@@ -73,37 +71,29 @@ export function ChartCenterContent({
   );
 }
 
-// ─── Donut chart wrapper ──────────────────────────────────────────────────────
-//
-// Renders the ring at a fixed height with legend OUTSIDE the height-constrained
-// container. This prevents the legend from eating into the canvas height, which
-// would shrink the ring radius — the root cause of the "portfolio chart looks
-// smaller" problem (expo-skia-charts v0.5.0: canvasHeight = height - legendHeight).
-
 interface DashboardDonutChartProps {
   height: number;
   config: DonutChartConfig;
-  /** When provided, rendered below the ring outside the fixed-height container. */
+  /**
+   * Legend rendered below the ring, outside the fixed-height canvas container.
+   * expo-skia-charts v0.5.0 computes canvasHeight = totalHeight - legendHeight,
+   * so keeping the legend external ensures the ring always fills the full height.
+   */
   legend?: React.ReactNode;
 }
 
 export function DashboardDonutChart({ height, config, legend }: DashboardDonutChartProps) {
   return (
     <View style={{ width: '100%' }}>
-      {/* Fixed-height container: only the ring lives here, no legend */}
       <View style={{ width: '100%', height }}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <DonutChart config={config} />
         </GestureHandlerRootView>
       </View>
-
-      {/* Legend rendered outside — does not affect ring size */}
-      {legend ? legend : null}
+      {legend ?? null}
     </View>
   );
 }
-
-// ─── Legend ───────────────────────────────────────────────────────────────────
 
 function createLegendStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -143,9 +133,7 @@ export function DonutChartLegend({ segments }: { segments: ProcessedSegment[] })
     <View style={styles.legend}>
       {segments.map((segment) => (
         <View key={segment.label} style={styles.legendItem}>
-          <View
-            style={[styles.legendSwatch, { backgroundColor: segment.color }]}
-          />
+          <View style={[styles.legendSwatch, { backgroundColor: segment.color }]} />
           <Text style={styles.legendLabel}>{segment.label}</Text>
           <Text style={styles.legendValue}>
             {Math.round(segment.percentage * 100)}%
@@ -155,11 +143,6 @@ export function DonutChartLegend({ segments }: { segments: ProcessedSegment[] })
     </View>
   );
 }
-
-// ─── Height hook ─────────────────────────────────────────────────────────────
-//
-// Both variants use the same values so the two chart tabs feel equally weighted.
-// The `variant` param is kept for backward compat but no longer differentiates.
 
 export function useDonutChartHeight(_variant: 'primary' | 'secondary' = 'primary') {
   const { width: windowWidth } = useWindowDimensions();

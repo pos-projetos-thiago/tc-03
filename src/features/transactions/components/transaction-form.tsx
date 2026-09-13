@@ -26,10 +26,6 @@ import { useReceiptUpload } from '../hooks/use-receipt-upload';
 import type { Transaction, TransactionType } from '../types/transaction';
 import { INVESTMENT_CATEGORIES } from '../types/transaction-investment-categories';
 
-// ---------------------------------------------------------------------------
-// Category options per type
-// ---------------------------------------------------------------------------
-
 const INCOME_CATEGORIES = ['Salário', 'Freelance', 'Venda', 'Outros'] as const;
 
 const EXPENSE_CATEGORIES = [
@@ -40,10 +36,6 @@ const EXPENSE_CATEGORIES = [
   'Saúde',
   'Outros',
 ] as const;
-
-// ---------------------------------------------------------------------------
-// Validation helpers
-// ---------------------------------------------------------------------------
 
 function validateDescription(value: string): string | null {
   if (value.trim().length > 120) return 'Descrição deve ter no máximo 120 caracteres';
@@ -66,7 +58,7 @@ function parseDateInput(value: string): string | null {
   return date.toISOString();
 }
 
-/** Converte ISO 8601 para DD/MM/AAAA para exibição no campo. */
+/** Converte ISO 8601 para DD/MM/AAAA. */
 function isoToDateInput(iso: string): string {
   const d = new Date(iso);
   const day = String(d.getUTCDate()).padStart(2, '0');
@@ -87,10 +79,6 @@ function todayAsInput(): string {
   const m = String(today.getMonth() + 1).padStart(2, '0');
   return `${d}/${m}/${today.getFullYear()}`;
 }
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface FieldErrors {
   type: string | null;
@@ -113,10 +101,6 @@ interface TransactionFormProps {
   initialData?: Transaction;
 }
 
-// ---------------------------------------------------------------------------
-// DropdownSelect — dropdown colapsável, estado controlado pelo pai
-// ---------------------------------------------------------------------------
-
 interface DropdownSelectProps {
   options: readonly string[];
   value: string;
@@ -129,8 +113,7 @@ interface DropdownSelectProps {
   onChange: (value: string) => void;
 }
 
-// Estilos estáticos do DropdownSelect — fora do componente para evitar
-// recriação a cada render e incompatibilidade com o React Compiler.
+// Estilos estáticos declarados fora do componente para evitar recriação a cada render.
 const dropdownStyles = StyleSheet.create({
   trigger: {
     height: 48,
@@ -185,11 +168,10 @@ function DropdownSelect({
   onToggle,
   onChange,
 }: DropdownSelectProps) {
-  const borderColor = hasError ? '#ef4444' : colors.border;
+  const borderColor = hasError ? colors.negative : colors.border;
 
   return (
     <View>
-      {/* ── Trigger ── */}
       <Pressable
         onPress={() => { if (!disabled) onToggle(); }}
         style={[
@@ -220,7 +202,6 @@ function DropdownSelect({
         </Text>
       </Pressable>
 
-      {/* ── Lista — só existe no DOM quando open=true ── */}
       {open ? (
         <View
           style={[
@@ -268,16 +249,6 @@ function DropdownSelect({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Formulário de criação e edição de transação.
- * - Sem `initialData`: modo criação — usa useCreateTransaction.
- * - Com `initialData`: modo edição — usa useEditTransaction, preserva userId original.
- * Após salvar com sucesso, fecha a tela e a lista se atualiza via useFocusEffect.
- */
 export function TransactionForm({ initialData }: TransactionFormProps) {
   const isEditing = initialData !== undefined;
 
@@ -298,10 +269,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   const error = isEditing ? editError : createError;
   const clearError = isEditing ? clearEditError : clearCreateError;
 
-  // -------------------------------------------------------------------------
-  // Field state
-  // -------------------------------------------------------------------------
-
   const [type, setType] = useState<TransactionType>(initialData?.type ?? 'expense');
   const [amount, setAmount] = useState<string>(
     initialData ? String(initialData.amount) : '',
@@ -311,17 +278,10 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
   const [date, setDate] = useState<string>(
     initialData ? isoToDateInput(initialData.date) : todayAsInput(),
   );
-
-  // Estado do dropdown — controlado aqui para poder fechar ao trocar o tipo
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-
   const [selectedAttachment, setSelectedAttachment] = useState<SelectedAttachment | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(EMPTY_ERRORS);
   const [submitted, setSubmitted] = useState(false);
-
-  // -------------------------------------------------------------------------
-  // Análise por IA — pré-preenche apenas campos ainda vazios
-  // -------------------------------------------------------------------------
 
   async function handleAnalyzeWithAI() {
     if (!selectedAttachment) return;
@@ -334,15 +294,9 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
         setCategory(INVESTMENT_CATEGORIES[0]);
       }
     }
-    if (result.amount !== null && !amount) {
-      setAmount(String(result.amount));
-    }
-    if (result.category !== null && !category) {
-      setCategory(result.category);
-    }
-    if (result.description !== null && !description) {
-      setDescription(result.description);
-    }
+    if (result.amount !== null && !amount) setAmount(String(result.amount));
+    if (result.category !== null && !category) setCategory(result.category);
+    if (result.description !== null && !description) setDescription(result.description);
     if (result.date !== null && date === todayAsInput()) {
       try {
         const d = new Date(result.date);
@@ -353,14 +307,10 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           setDate(`${dd}/${mm}/${yyyy}`);
         }
       } catch {
-        // data inválida — ignora silenciosamente
+        // invalid date from extraction — skip silently
       }
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Field change handlers
-  // -------------------------------------------------------------------------
 
   function handleAmountChange(value: string) {
     const sanitised = value.replace(/[^0-9.,]/g, '');
@@ -399,10 +349,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     if (error) clearError();
   }
 
-  // -------------------------------------------------------------------------
-  // Submit
-  // -------------------------------------------------------------------------
-
   async function handleSubmit() {
     setSubmitted(true);
 
@@ -420,7 +366,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     if (!user) return;
 
     const isoDate = parseDateInput(date)!;
-
     let resolvedReceiptUrl: string | null = initialData?.receiptUrl ?? null;
 
     if (selectedAttachment) {
@@ -460,10 +405,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
   const s = makeStyles(colors);
 
   return (
@@ -475,14 +416,12 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {/* Erro global */}
         {error ? (
           <View style={s.errorBanner} accessibilityRole="alert" accessibilityLiveRegion="polite">
             <Text style={s.errorBannerText}>{error}</Text>
           </View>
         ) : null}
 
-        {/* Tipo */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>Tipo</Text>
           <View style={s.segmentRow}>
@@ -539,7 +478,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           </View>
         </View>
 
-        {/* Valor */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>Valor (R$)</Text>
           <TextInput
@@ -558,22 +496,17 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Categoria */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>
             {type === 'investment' ? 'Tipo de investimento' : 'Categoria'}
           </Text>
 
           {type === 'investment' ? (
-            /* ── Picker fixo para investimento — comportamento original ── */
             <View style={[s.pickerWrapper, fieldErrors.category ? s.inputError : null]}>
               {INVESTMENT_CATEGORIES.map((cat) => (
                 <Pressable
                   key={cat}
-                  style={[
-                    s.pickerOption,
-                    category === cat && s.pickerOptionSelected,
-                  ]}
+                  style={[s.pickerOption, category === cat && s.pickerOptionSelected]}
                   onPress={() => {
                     setCategory(cat);
                     if (submitted) {
@@ -596,7 +529,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               ))}
             </View>
           ) : (
-            /* ── Dropdown colapsável para income e expense ── */
             <DropdownSelect
               options={type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES}
               value={category}
@@ -615,7 +547,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Descrição — opcional */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>Descrição <Text style={s.labelOptional}>(opcional)</Text></Text>
           <TextInput
@@ -634,7 +565,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           ) : null}
         </View>
 
-        {/* Data — exibida somente na edição; na criação usa a data atual automaticamente */}
         {isEditing ? (
           <View style={s.fieldWrapper}>
             <Text style={s.label}>Data</Text>
@@ -658,7 +588,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           </View>
         ) : null}
 
-        {/* Anexo — opcional */}
         <View style={s.fieldWrapper}>
           <Text style={s.label}>
             Anexo <Text style={s.labelOptional}>(opcional)</Text>
@@ -678,7 +607,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           />
         </View>
 
-        {/* Importar com IA — visível somente quando há anexo selecionado */}
         {selectedAttachment && !isEditing ? (
           <View style={s.fieldWrapper}>
             <TouchableOpacity
@@ -689,14 +617,14 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
               accessibilityLabel="Analisar documento com IA"
               accessibilityState={{ busy: isAnalyzing }}>
               <Text style={s.aiButtonText}>
-                {isAnalyzing ? '⏳ Analisando documento…' : '✨ Importar com IA'}
+                {isAnalyzing ? 'Analisando documento…' : 'Importar com IA'}
               </Text>
             </TouchableOpacity>
 
             {extractionResult?.confidence === 'low' ? (
               <View style={s.aiWarningBanner} accessibilityRole="alert">
                 <Text style={s.aiWarningText}>
-                  ⚠️ A IA não tem certeza sobre alguns dados. Confira antes de salvar.
+                  A IA não tem certeza sobre alguns dados. Confira antes de salvar.
                 </Text>
               </View>
             ) : null}
@@ -704,7 +632,7 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
             {extractionResult && extractionResult.confidence !== 'low' ? (
               <View style={s.aiSuccessBanner}>
                 <Text style={s.aiSuccessText}>
-                  ✅ Dados preenchidos pela IA. Revise e confirme antes de salvar.
+                  Dados preenchidos pela IA. Revise e confirme antes de salvar.
                 </Text>
               </View>
             ) : null}
@@ -717,7 +645,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
           </View>
         ) : null}
 
-        {/* Botão salvar */}
         <TouchableOpacity
           style={[s.button, isSubmitting && s.buttonDisabled]}
           onPress={handleSubmit}
@@ -738,10 +665,6 @@ export function TransactionForm({ initialData }: TransactionFormProps) {
     </KeyboardAvoidingView>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -849,7 +772,6 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 15,
       fontWeight: '600',
     },
-    // ── Picker fixo (investment) ──
     pickerWrapper: {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
@@ -874,7 +796,6 @@ function makeStyles(colors: ThemeColors) {
       color: colors.tint,
       fontWeight: '600',
     },
-    // ── IA ──
     aiButton: {
       height: 46,
       backgroundColor: colors.surface,

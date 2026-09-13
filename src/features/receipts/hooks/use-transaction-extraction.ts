@@ -19,11 +19,7 @@ interface UseTransactionExtractionResult {
 
 /**
  * Hook de extração de dados de transação por IA.
- * Encapsula o estado de análise e delega ao serviço de extração.
- *
- * A transação NUNCA é criada automaticamente.
- * O resultado é exposto para que o formulário pré-preencha os campos,
- * mas o usuário sempre confirma antes de salvar.
+ * O resultado pré-preenche o formulário, mas o usuário sempre confirma antes de salvar.
  */
 export function useTransactionExtraction(): UseTransactionExtractionResult {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -59,13 +55,8 @@ export function useTransactionExtraction(): UseTransactionExtractionResult {
   return { analyze, isAnalyzing, result, error, reset };
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function mapExtractionError(err: unknown): string {
   if (err instanceof Error) {
-    // Erros comuns do Firebase AI
     if (err.message.includes('PERMISSION_DENIED') || err.message.includes('API_KEY')) {
       return 'A IA não está configurada. Verifique a configuração do Firebase AI Logic.';
     }
@@ -75,9 +66,6 @@ function mapExtractionError(err: unknown): string {
     if (err.message.includes('INVALID_ARGUMENT')) {
       return 'O arquivo não pôde ser processado. Tente com outro formato.';
     }
-    // Preserva a mensagem original para facilitar diagnóstico.
-    // Não mascarar com "Falha de rede" — erros HTTP da SDK contêm "fetch"
-    // na mensagem mas não são necessariamente problemas de conectividade.
     return err.message;
   }
   return 'Não foi possível analisar o documento. Tente novamente.';
