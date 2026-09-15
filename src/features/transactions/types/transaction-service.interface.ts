@@ -20,10 +20,4 @@ export interface ITransactionService {
 
   delete(id: string, userId: string): Promise<void>;
 
-  /**
-   * Cria a transação de saldo inicial para um novo usuário.
-   * Deve ser chamado uma única vez, logo após o registro.
-   * Idempotente por design: não verifica duplicatas (responsabilidade do chamador).
-   */
-  seedInitialBalance(userId: string): Promise<void>;
 }

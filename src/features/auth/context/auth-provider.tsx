@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from 'react';
 
 import { authService } from '../services/firebase-auth.service';
-import { transactionService } from '@/src/features/transactions/services/firestore-transaction.service';
 import { isFirebaseConfigured } from '@/src/lib/firebase/config';
 import {
   describeOobCode,
@@ -90,8 +89,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const user = await authService.signUp(email, password, name);
       dispatch({ type: 'SET_USER', payload: user });
-      // Seed do saldo inicial em background — não bloqueia o login em caso de falha.
-      transactionService.seedInitialBalance(user.id).catch(() => undefined);
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: mapFirebaseError(err) });
     }
