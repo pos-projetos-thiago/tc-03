@@ -1,6 +1,4 @@
-import { Firestore, getFirestore } from 'firebase/firestore';
-import app from './config';
-
-const db: Firestore = getFirestore(app);
-
-export { db };
+// Este módulo existe apenas para compatibilidade de import path.
+// A instância do Firestore é criada diretamente nos services que a utilizam
+// para evitar circular dependencies com o sistema de módulos do Metro/Hermes.
+export {};

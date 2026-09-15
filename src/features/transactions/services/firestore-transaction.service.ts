@@ -1,5 +1,6 @@
 import {
   DocumentSnapshot,
+  Firestore,
   QueryConstraint,
   Timestamp,
   addDoc,
@@ -8,6 +9,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getFirestore,
   limit,
   orderBy,
   query,
@@ -16,7 +18,7 @@ import {
   where,
 } from 'firebase/firestore';
 
-import { db } from '@/src/lib/firebase/firestore';
+import app from '@/src/lib/firebase/config';
 import type { PaginatedResult } from '@/src/shared/types/pagination';
 import type { TransactionDTO } from '../types/transaction-dto';
 import type {
@@ -53,12 +55,25 @@ function toTimestamp(iso: string): Timestamp {
 }
 
 class FirestoreTransactionService implements ITransactionService {
+  private _db: Firestore | null = null;
+
+  /**
+   * Lazy getter — instancia o Firestore apenas na primeira chamada de negócio.
+   * Evita circular dependencies no sistema de módulos do Metro/Hermes.
+   */
+  private get db(): Firestore {
+    if (!this._db) {
+      this._db = getFirestore(app);
+    }
+    return this._db;
+  }
+
   async getPage(
     userId: string,
     cursor?: unknown,
     filter?: TransactionFilter,
   ): Promise<PaginatedResult<Transaction>> {
-    const ref = collection(db, COLLECTION);
+    const ref = collection(this.db, COLLECTION);
 
     const constraints: QueryConstraint[] = [
       where('userId', '==', userId),
@@ -107,7 +122,7 @@ class FirestoreTransactionService implements ITransactionService {
       updatedAt: now,
     };
 
-    const ref = await addDoc(collection(db, COLLECTION), dto);
+    const ref = await addDoc(collection(this.db, COLLECTION), dto);
 
     return {
       id: ref.id,
@@ -128,7 +143,7 @@ class FirestoreTransactionService implements ITransactionService {
     userId: string,
     data: UpdateTransactionInput,
   ): Promise<Transaction> {
-    const ref = doc(db, COLLECTION, id);
+    const ref = doc(this.db, COLLECTION, id);
     const snapshot = await getDoc(ref);
 
     if (!snapshot.exists()) {
@@ -169,7 +184,7 @@ class FirestoreTransactionService implements ITransactionService {
   }
 
   async delete(id: string, userId: string): Promise<void> {
-    const ref = doc(db, COLLECTION, id);
+    const ref = doc(this.db, COLLECTION, id);
     const snapshot = await getDoc(ref);
 
     if (!snapshot.exists()) {
@@ -183,28 +198,6 @@ class FirestoreTransactionService implements ITransactionService {
     }
 
     await deleteDoc(ref);
-  }
-
-  async seedInitialBalance(userId: string): Promise<void> {
-    const now = Timestamp.now();
-    const today = new Date();
-    const isoDate = new Date(
-      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 12, 0, 0),
-    ).toISOString();
-
-    const dto: TransactionDTO = {
-      userId,
-      type: 'income',
-      amount: 2000,
-      category: 'Saldo inicial',
-      description: 'Saldo de boas-vindas',
-      date: toTimestamp(isoDate),
-      receiptUrl: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await addDoc(collection(db, COLLECTION), dto);
   }
 }
 

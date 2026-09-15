@@ -1,8 +1,8 @@
-import { SchemaType } from 'firebase/ai';
+import { GenerativeModel, GoogleAIBackend, SchemaType, getAI, getGenerativeModel } from 'firebase/ai';
 import type { Part } from 'firebase/ai';
 import * as LegacyFS from 'expo-file-system/legacy';
 
-import { geminiModel } from '@/src/lib/firebase/ai';
+import app from '@/src/lib/firebase/config';
 import type { SelectedAttachment } from '../types/selected-attachment';
 import type { ExtractionResult } from '../types/extraction-result';
 
@@ -77,6 +77,19 @@ Examples:
 "Uber R$ 28,90" → type: expense, amount: 28.90, category: "Transporte", description: "Corrida Uber"`;
 
 /**
+ * Lazy singleton para o modelo Gemini.
+ * Criado aqui dentro do service para evitar circular dependencies no Metro/Hermes.
+ */
+let _geminiModel: GenerativeModel | null = null;
+function getGeminiModel(): GenerativeModel {
+  if (!_geminiModel) {
+    const firebaseAI = getAI(app, { backend: new GoogleAIBackend() });
+    _geminiModel = getGenerativeModel(firebaseAI, { model: 'gemini-3.5-flash-lite' });
+  }
+  return _geminiModel;
+}
+
+/**
  * Extrai dados de transação de um arquivo via Firebase AI Logic (Gemini).
  * Não cria transações nem persiste dados — apenas retorna um ExtractionResult estruturado.
  */
@@ -85,7 +98,7 @@ export async function extractTransactionFromAttachment(
 ): Promise<ExtractionResult> {
   const parts = await buildParts(attachment);
 
-  const response = await geminiModel.generateContent({
+  const response = await getGeminiModel().generateContent({
     contents: [{ role: 'user', parts }],
     generationConfig: {
       responseMimeType: 'application/json',
