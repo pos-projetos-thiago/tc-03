@@ -1,6 +1,6 @@
-# ByteBank — Gerenciamento Financeiro Pessoal
+# ByteBank - Gerenciamento Financeiro Pessoal
 
-Aplicação mobile de gerenciamento financeiro desenvolvida com React Native, Expo e Firebase como parte do Tech Challenge — Fase 3 da pós-graduação PosTech FIAP.
+Aplicação mobile de gerenciamento financeiro desenvolvida com React Native, Expo e Firebase.
 
 ## Funcionalidades
 
@@ -26,10 +26,10 @@ Aplicação mobile de gerenciamento financeiro desenvolvida com React Native, Ex
 
 1. Crie um projeto no [Firebase Console](https://console.firebase.google.com).
 2. Ative os seguintes serviços:
-   - **Authentication** — habilite o provedor Email/Senha
-   - **Cloud Firestore** — crie o banco em modo de produção ou teste
-   - **Storage** — crie o bucket padrão
-   - **AI Logic** (Firebase Vertex AI / Gemini) — necessário para o recurso de importação por IA
+   - **Authentication** - habilite o provedor Email/Senha
+   - **Cloud Firestore** - crie o banco em modo de produção ou teste
+   - **Storage** - crie o bucket padrão
+   - **AI Logic** (Firebase Vertex AI / Gemini) - necessário para o recurso de importação por IA
 3. Registre um app Web no projeto Firebase e copie as credenciais geradas.
 
 ## Variáveis de ambiente
@@ -74,7 +74,7 @@ O runtime Hermes (React Native 0.81 / Expo SDK 57) não implementa `AbortSignal.
 ## Estrutura do projeto
 
 ```
-app/                    # Rotas (Expo Router — file-based routing)
+app/                    # Rotas (Expo Router - file-based routing)
   (auth)/               # Telas de autenticação
   (tabs)/               # Telas principais (Dashboard, Transações)
   transactions/         # Telas de criação e edição de transação
@@ -94,10 +94,10 @@ constants/
 ## Tecnologias
 
 - [React Native](https://reactnative.dev) + [Expo SDK 57](https://expo.dev)
-- [Expo Router](https://expo.github.io/router) — navegação baseada em arquivos
+- [Expo Router](https://expo.github.io/router) - navegação baseada em arquivos
 - [Firebase Authentication](https://firebase.google.com/docs/auth)
 - [Cloud Firestore](https://firebase.google.com/docs/firestore)
 - [Firebase Storage](https://firebase.google.com/docs/storage)
 - [Firebase AI Logic](https://firebase.google.com/docs/ai-logic) (Gemini)
-- [expo-skia-charts](https://github.com/alexsuarezm/expo-skia-charts) — gráficos donut
+- [expo-skia-charts](https://github.com/alexsuarezm/expo-skia-charts) - gráficos donut
 - [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated) + [Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler)
