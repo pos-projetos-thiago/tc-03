@@ -10,7 +10,22 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Selecione uma imagem para anexar como recibo da transação."
+        "NSPhotoLibraryUsageDescription": "Selecione uma imagem para anexar como recibo da transação.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "exp.direct": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true,
+              "NSThirdPartyExceptionAllowsInsecureHTTPLoads": true,
+              "NSThirdPartyExceptionRequiresForwardSecrecy": false
+            },
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
       }
     },
     "android": {

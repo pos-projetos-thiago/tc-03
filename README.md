@@ -69,10 +69,24 @@ npm install
 ## Executando o projeto
 
 ```bash
-npx expo start --clear --tunnel
+npm start
 ```
 
-O modo `--tunnel` é recomendado para garantir que dispositivos físicos com Expo Go consigam se conectar independente da configuração de rede local.
+O comando acima inicia o Metro em modo **LAN** (`--lan --clear`), que é o modo recomendado para dispositivos físicos com Expo Go.
+
+> **⚠️ Não use `--tunnel` com Expo SDK 57 + iOS**
+>
+> O modo tunnel gera URLs `*.exp.direct`. O runtime nativo do iOS converte `exp://` para `http://` — mas esses hosts são TLS-only. O ATS (App Transport Security) bloqueia a requisição HTTP resultante, causando o erro "Could not connect to development server" ([issue #47815](https://github.com/expo/expo/issues/47815)).
+>
+> O `app.json` já inclui as exceções ATS necessárias para o caso de uso do tunnel ser necessário eventualmente, mas o modo LAN é mais estável.
+
+### Modos disponíveis
+
+| Comando | Modo | Quando usar |
+|---|---|---|
+| `npm start` | LAN (padrão) | Mac e iPhone na mesma rede Wi-Fi |
+| `npm run start:tunnel` | Tunnel | Redes diferentes / hotspot (requer boa conexão) |
+| `npm run start:localhost` | Localhost | iPhone conectado via USB + `iproxy` |
 
 Após o servidor iniciar, escaneie o QR code exibido no terminal com o aplicativo Expo Go.
 

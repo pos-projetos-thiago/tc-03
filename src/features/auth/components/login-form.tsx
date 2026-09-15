@@ -80,8 +80,7 @@ export function LoginForm() {
           <View style={s.errorBanner} accessibilityRole="alert" accessibilityLiveRegion="polite">
             <Text style={s.errorBannerText}>
               Firebase não configurado. Crie o arquivo .env com EXPO_PUBLIC_FIREBASE_* (copie de
-              .env.example), preencha com os dados do projeto e reinicie com npx expo start --clear
-              --tunnel.
+              .env.example), preencha com os dados do projeto e reinicie com npm start.
             </Text>
           </View>
         ) : null}
